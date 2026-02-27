@@ -1,0 +1,110 @@
+<Window x:Class="WorklogManager.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:h="clr-namespace:WorklogManager.Helpers"
+        mc:Ignorable="d"
+        Title="Settings — WorklogManager"
+        Width="520" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+
+    <Window.Resources>
+        <h:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+        <Style x:Key="FieldLabel" TargetType="Label">
+            <Setter Property="Width" Value="120"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="4,3"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Height" Value="26"/>
+        </Style>
+        <Style TargetType="PasswordBox">
+            <Setter Property="Padding" Value="4,3"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Height" Value="26"/>
+        </Style>
+        <Style x:Key="SectionHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#1E4D8C"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+    </Window.Resources>
+
+    <StackPanel Margin="20" MinWidth="460">
+
+        <!-- ── JIRA ─────────────────────────────────────────────────── -->
+        <TextBlock Style="{StaticResource SectionHeader}" Text="Jira Connection"/>
+
+        <!-- Base URL -->
+        <DockPanel Margin="0,0,0,8">
+            <Label Style="{StaticResource FieldLabel}" Content="Base URL:"/>
+            <TextBox Text="{Binding JiraBaseUrl, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="https://yourcompany.atlassian.net"/>
+        </DockPanel>
+
+        <!-- Email -->
+        <DockPanel Margin="0,0,0,8">
+            <Label Style="{StaticResource FieldLabel}" Content="Email:"/>
+            <TextBox Text="{Binding JiraEmail, UpdateSourceTrigger=PropertyChanged}"/>
+        </DockPanel>
+
+        <!-- Jira API Token -->
+        <DockPanel Margin="0,0,0,8">
+            <Label Style="{StaticResource FieldLabel}" Content="API Token:"/>
+            <PasswordBox x:Name="JiraPasswordBox"
+                         ToolTip="Leave blank to keep the existing token"/>
+        </DockPanel>
+
+        <!-- Test Jira -->
+        <DockPanel Margin="0,0,0,16">
+            <Label Style="{StaticResource FieldLabel}" Content=""/>
+            <Button Content="Test Jira Connection"
+                    Command="{Binding TestJiraCommand}"
+                    Padding="12,5" HorizontalAlignment="Left"/>
+        </DockPanel>
+
+        <Separator Margin="0,0,0,16"/>
+
+        <!-- ── TEMPO ─────────────────────────────────────────────────── -->
+        <TextBlock Style="{StaticResource SectionHeader}" Text="Tempo Connection"/>
+
+        <!-- Tempo Token -->
+        <DockPanel Margin="0,0,0,8">
+            <Label Style="{StaticResource FieldLabel}" Content="API Token:"/>
+            <Button Content="Test"
+                    Command="{Binding TestTempoCommand}"
+                    Padding="12,4" Margin="8,0,0,0" DockPanel.Dock="Right"/>
+            <PasswordBox x:Name="TempoPasswordBox"
+                         ToolTip="Leave blank to keep the existing token"/>
+        </DockPanel>
+
+        <!-- Status box — shows full response body for diagnosis -->
+        <Border Background="#F8F8F8" BorderBrush="#D0D0D0" BorderThickness="1"
+                CornerRadius="3" Padding="10,7" Margin="0,8,0,20"
+                Visibility="{Binding TestStatus,
+                    Converter={StaticResource StringToVisibilityConverter}}">
+            <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
+                <TextBox Text="{Binding TestStatus, Mode=OneWay}"
+                         IsReadOnly="True" BorderThickness="0"
+                         Background="Transparent"
+                         TextWrapping="Wrap" FontSize="11"
+                         FontFamily="Consolas"/>
+            </ScrollViewer>
+        </Border>
+
+        <!-- ── BUTTONS ───────────────────────────────────────────────── -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Save" IsDefault="True" Click="SaveButton_Click"
+                    Padding="18,6" Margin="0,0,8,0"
+                    Command="{Binding SaveCommand}"/>
+            <Button Content="Cancel" IsCancel="True" Click="CancelButton_Click"
+                    Padding="18,6"/>
+        </StackPanel>
+
+    </StackPanel>
+</Window>

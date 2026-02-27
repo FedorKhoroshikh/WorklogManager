@@ -1,0 +1,411 @@
+<Window x:Class="WorklogManager.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:h="clr-namespace:WorklogManager.Helpers"
+        mc:Ignorable="d"
+        Title="WorklogManager"
+        MinWidth="1000" MinHeight="640"
+        Width="1280" Height="760"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+
+        <!-- Converters -->
+        <h:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+
+        <!-- DataGrid row colour by status -->
+        <Style x:Key="RowStyle" TargetType="DataGridRow">
+            <Style.Triggers>
+                <!-- Already exists in Tempo → yellow (checked first so Error/Success can override) -->
+                <DataTrigger Binding="{Binding ExistsInTempo}" Value="True">
+                    <Setter Property="Background" Value="#FFFDE7"/>
+                    <Setter Property="Foreground" Value="#6B5700"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding UploadStatus}" Value="Error">
+                    <Setter Property="Background" Value="#FFEEEE"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding UploadStatus}" Value="Success">
+                    <Setter Property="Background" Value="#EEFFEE"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IssueExists}" Value="False">
+                    <Setter Property="Foreground" Value="#AA4400"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- DataGrid cell: highlight validation errors -->
+        <Style x:Key="ValidatedCell" TargetType="DataGridCell">
+            <Style.Triggers>
+                <Trigger Property="Validation.HasError" Value="True">
+                    <Setter Property="Background" Value="#FFF0F0"/>
+                    <Setter Property="ToolTip"
+                            Value="{Binding RelativeSource={RelativeSource Self},
+                                   Path=(Validation.Errors)[0].ErrorContent}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ActionBtn" TargetType="Button">
+            <Setter Property="Padding" Value="14,5"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="MinWidth" Value="130"/>
+        </Style>
+
+        <Style x:Key="SectionHdr" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="#555555"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+    </Window.Resources>
+
+    <!--
+        Outer grid — 4 rows:
+          0  Toolbar           (Auto)
+          1  Main area         (* with MinHeight — contains content + bottom controls)
+          2  Horizontal splitter  (6 px, draggable — resizes rows 1 and 3)
+          3  Log panel         (* with MinHeight — contains progress bar + log)
+    -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>                  <!-- Toolbar         -->
+            <RowDefinition Height="*" MinHeight="260"/>     <!-- Main area       -->
+            <RowDefinition Height="6"/>                     <!-- H-Splitter      -->
+            <RowDefinition Height="160" MinHeight="60"/>    <!-- Log panel       -->
+        </Grid.RowDefinitions>
+
+        <!-- ══ ROW 0 — TOOLBAR ══════════════════════════════════════════════ -->
+        <Border Grid.Row="0" Background="#2B579A" Padding="10,6">
+            <DockPanel>
+                <TextBlock Text="WorklogManager" DockPanel.Dock="Left"
+                           Foreground="White" FontSize="16" FontWeight="Bold"
+                           VerticalAlignment="Center" Margin="0,0,20,0"/>
+
+                <Button Content="⚙ Settings"
+                        Command="{Binding OpenSettingsCommand}"
+                        DockPanel.Dock="Right"
+                        Background="#1a4578" Foreground="White"
+                        BorderBrush="#3A6FAA" Padding="12,4"/>
+
+                <Button Content="📂 Load CSV"
+                        Command="{Binding LoadCsvCommand}"
+                        Background="#1a8040" Foreground="White"
+                        BorderBrush="#2a9050" Padding="14,4" Margin="0,0,12,0"/>
+
+                <TextBlock Text="{Binding LoadedFilePath}"
+                           Foreground="#CCDDFF" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" FontSize="11"/>
+            </DockPanel>
+        </Border>
+
+        <!-- ══ ROW 1 — MAIN AREA (content + bottom controls) ════════════════ -->
+        <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>     <!-- DataGrid area    -->
+                <RowDefinition Height="Auto"/>  <!-- Bottom controls  -->
+            </Grid.RowDefinitions>
+
+            <!-- ── Content: left panel + column splitter + DataGrid ── -->
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="190" MinWidth="160"/>
+                    <ColumnDefinition Width="5"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left panel: summary + date filters -->
+                <DockPanel Grid.Column="0" Margin="8,8,0,8">
+
+                    <!-- Export summary -->
+                    <Border DockPanel.Dock="Top"
+                            Background="#EEF3FB" BorderBrush="#C8D8F0"
+                            BorderThickness="1" CornerRadius="4"
+                            Padding="8,8" Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionHdr}" Text="EXPORT SUMMARY"/>
+                            <TextBlock Text="{Binding ExportSummary}"
+                                       TextWrapping="Wrap" FontSize="12" LineHeight="18"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Select / Clear all -->
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
+                        <Button Content="All"  Command="{Binding SelectAllDatesCommand}"
+                                Padding="10,2" Margin="0,0,4,0" FontSize="11"/>
+                        <Button Content="None" Command="{Binding ClearAllDatesCommand}"
+                                Padding="10,2" FontSize="11"/>
+                    </StackPanel>
+
+                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource SectionHdr}" Text="DATES"/>
+
+                    <!-- Date checkboxes -->
+                    <ListBox ItemsSource="{Binding DateFilters}"
+                             BorderThickness="1" BorderBrush="#D0D8E4"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="2,0"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                                          Content="{Binding DateDisplay}"
+                                          FontFamily="Consolas" FontSize="12"
+                                          Padding="4,3"/>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+
+                <!-- Column splitter (left panel ↔ DataGrid) -->
+                <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
+                              Background="#E0E0E0" ResizeBehavior="PreviousAndNext"/>
+
+                <!-- DataGrid -->
+                <DataGrid Grid.Column="2"
+                          Margin="6,8,8,8"
+                          ItemsSource="{Binding FilteredRecords}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          CanUserReorderColumns="True"
+                          CanUserResizeColumns="True"
+                          CanUserSortColumns="True"
+                          RowStyle="{StaticResource RowStyle}"
+                          SelectionMode="Extended"
+                          GridLinesVisibility="Horizontal"
+                          HorizontalGridLinesBrush="#E8E8E8"
+                          FontSize="12">
+
+                    <DataGrid.Columns>
+
+                        <!-- Selected -->
+                        <DataGridCheckBoxColumn Header="✓" Width="32"
+                            Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <!-- Date (read-only) -->
+                        <DataGridTextColumn Header="Date" Width="95"
+                            Binding="{Binding DateDisplay}" IsReadOnly="True"
+                            FontFamily="Consolas"/>
+
+                        <!-- IssueKey (editable + validated) -->
+                        <DataGridTextColumn Header="Issue Key" Width="105"
+                            FontFamily="Consolas"
+                            CellStyle="{StaticResource ValidatedCell}">
+                            <DataGridTextColumn.Binding>
+                                <Binding Path="IssueKey"
+                                         UpdateSourceTrigger="LostFocus"
+                                         ValidatesOnDataErrors="True"
+                                         NotifyOnValidationError="True"/>
+                            </DataGridTextColumn.Binding>
+                        </DataGridTextColumn>
+
+                        <!-- Hours (editable — snaps to nearest 5 min on commit) -->
+                        <DataGridTextColumn Header="Hours" Width="65"
+                            CellStyle="{StaticResource ValidatedCell}">
+                            <DataGridTextColumn.Binding>
+                                <Binding Path="RoundedHours"
+                                         StringFormat="F2"
+                                         UpdateSourceTrigger="LostFocus"
+                                         ValidatesOnDataErrors="True"
+                                         NotifyOnValidationError="True"/>
+                            </DataGridTextColumn.Binding>
+                        </DataGridTextColumn>
+
+                        <!-- Seconds (read-only) -->
+                        <DataGridTextColumn Header="Sec" Width="65"
+                            Binding="{Binding RoundedTimeSpentSeconds}"
+                            IsReadOnly="True"
+                            FontFamily="Consolas">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#888888"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+
+                        <!-- IssueExists icon -->
+                        <DataGridTextColumn Header="Jira" Width="45"
+                            Binding="{Binding IssueExistsDisplay}"
+                            IsReadOnly="True" FontSize="14">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+
+                        <!-- Project (read-only — from "Project" CSV column, minus IssueKey) -->
+                        <DataGridTextColumn Header="Project" Width="160" MinWidth="80"
+                            Binding="{Binding ProjectName}" IsReadOnly="True">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#666666"/>
+                                    <Setter Property="FontSize" Value="11"/>
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                    <Setter Property="ToolTip" Value="{Binding ProjectName}"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+
+                        <!-- Description (editable, multiline — supports bulleted merged descriptions) -->
+                        <DataGridTemplateColumn Header="Description" Width="*" MinWidth="200">
+                            <DataGridTemplateColumn.CellStyle>
+                                <Style TargetType="DataGridCell">
+                                    <Style.Triggers>
+                                        <Trigger Property="Validation.HasError" Value="True">
+                                            <Setter Property="Background" Value="#FFF0F0"/>
+                                            <Setter Property="ToolTip"
+                                                    Value="{Binding RelativeSource={RelativeSource Self},
+                                                           Path=(Validation.Errors)[0].ErrorContent}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGridTemplateColumn.CellStyle>
+                            <!-- View mode: wrapped text, auto row height -->
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Description}"
+                                               TextWrapping="Wrap" Padding="4,3"
+                                               MaxHeight="80"
+                                               FontSize="12"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <!-- Edit mode: multiline TextBox, AcceptsReturn for manual editing -->
+                            <DataGridTemplateColumn.CellEditingTemplate>
+                                <DataTemplate>
+                                    <TextBox Text="{Binding Description,
+                                                    UpdateSourceTrigger=PropertyChanged,
+                                                    ValidatesOnDataErrors=True}"
+                                             TextWrapping="Wrap"
+                                             AcceptsReturn="True"
+                                             MinHeight="40" MaxHeight="120"
+                                             VerticalScrollBarVisibility="Auto"
+                                             Padding="4,3" FontSize="12"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Upload status (read-only) -->
+                        <DataGridTextColumn Header="Status" Width="130"
+                            Binding="{Binding UploadStatusDisplay}"
+                            IsReadOnly="True" FontSize="11"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+
+            <!-- ── Bottom controls ── -->
+            <Border Grid.Row="1" Background="#F4F4F4" BorderBrush="#DDDDDD"
+                    BorderThickness="0,1,0,0" Padding="10,6">
+                <StackPanel>
+
+                    <!-- Top row: buttons + toggles -->
+                    <DockPanel Margin="0,0,0,4">
+
+                        <!-- Right side: toggles -->
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+
+                            <!-- Merge toggle -->
+                            <Border Background="#EEF6FF" BorderBrush="#AACCEE"
+                                    BorderThickness="1" CornerRadius="3"
+                                    Padding="12,5" Margin="0,0,8,0">
+                                <CheckBox IsChecked="{Binding MergeRecords}"
+                                          VerticalAlignment="Center">
+                                    <TextBlock>
+                                        <Run Text="⊕" FontWeight="Bold"/>
+                                        <Run Text=" Merge by Issue Key"/>
+                                    </TextBlock>
+                                </CheckBox>
+                            </Border>
+
+                            <!-- Dry Run toggle -->
+                            <Border Background="#FFFBEA" BorderBrush="#DDCC88"
+                                    BorderThickness="1" CornerRadius="3" Padding="12,5">
+                                <CheckBox IsChecked="{Binding IsDryRun}"
+                                          VerticalAlignment="Center" FontWeight="SemiBold">
+                                    <TextBlock Text="🧪 Dry Run Mode"/>
+                                </CheckBox>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Left side: action buttons -->
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Style="{StaticResource ActionBtn}"
+                                    Content="✔ Validate Issues"
+                                    Command="{Binding ValidateIssuesCommand}"/>
+                            <Button Style="{StaticResource ActionBtn}"
+                                    Content="🔍 Check Tempo"
+                                    Command="{Binding CheckTempoCommand}"/>
+                            <Button Style="{StaticResource ActionBtn}"
+                                    Content="🚀 Send to Tempo"
+                                    Command="{Binding SendToTempoCommand}"/>
+                            <Button Content="⏹ Cancel"
+                                    Command="{Binding CancelCommand}"
+                                    Padding="14,5"
+                                    Background="#FFEEEE" BorderBrush="#FFBBBB"/>
+                        </StackPanel>
+                    </DockPanel>
+
+                    <!-- Validation summary — appears after Validate Issues completes -->
+                    <TextBlock Text="{Binding ValidationSummary}"
+                               Visibility="{Binding ValidationSummary,
+                                   Converter={StaticResource StringToVisibilityConverter}}"
+                               FontSize="12" FontWeight="SemiBold"
+                               Margin="2,0,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#CC7700"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ValidationSummaryIsSuccess}" Value="True">
+                                        <Setter Property="Foreground" Value="#1A803A"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- ══ ROW 2 — HORIZONTAL SPLITTER (main ↔ log) ═════════════════════ -->
+        <GridSplitter Grid.Row="2"
+                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                      ResizeBehavior="PreviousAndNext"
+                      Background="#C8C8C8" Cursor="SizeNS"/>
+
+        <!-- ══ ROW 3 — LOG PANEL (progress bar + status log) ════════════════ -->
+        <Grid Grid.Row="3">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>  <!-- Progress bar -->
+                <RowDefinition Height="*"/>     <!-- Status log   -->
+            </Grid.RowDefinitions>
+
+            <ProgressBar Grid.Row="0"
+                         Value="{Binding Progress, Mode=OneWay}" Maximum="100"
+                         Height="6" Background="#E0E0E0" Foreground="#2B8A3E"/>
+
+            <Border Grid.Row="1" Background="#1E1E1E">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top"
+                               Text="LOG" Foreground="#888888" FontSize="10"
+                               FontWeight="Bold" Margin="8,4,0,2"/>
+                    <ScrollViewer x:Name="LogScrollViewer"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Auto">
+                        <TextBox Text="{Binding StatusLog, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 Background="Transparent" Foreground="#C8C8C8"
+                                 FontFamily="Consolas" FontSize="11"
+                                 BorderThickness="0" Padding="8,2"
+                                 TextWrapping="NoWrap" VerticalAlignment="Top"
+                                 TextChanged="LogTextBox_TextChanged"/>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
