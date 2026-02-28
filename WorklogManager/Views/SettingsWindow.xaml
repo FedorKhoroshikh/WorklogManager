@@ -6,14 +6,14 @@
         xmlns:h="clr-namespace:WorklogManager.Helpers"
         mc:Ignorable="d"
         Title="Settings — WorklogManager"
-        Width="520" SizeToContent="Height"
+        Width="720" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize">
 
     <Window.Resources>
         <h:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
         <Style x:Key="FieldLabel" TargetType="Label">
-            <Setter Property="Width" Value="120"/>
+            <Setter Property="Width" Value="220"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
@@ -35,7 +35,7 @@
         </Style>
     </Window.Resources>
 
-    <StackPanel Margin="20" MinWidth="460">
+    <StackPanel Margin="20" MinWidth="660">
 
         <!-- ── JIRA ─────────────────────────────────────────────────── -->
         <TextBlock Style="{StaticResource SectionHeader}" Text="Jira Connection"/>
@@ -49,13 +49,13 @@
 
         <!-- Email -->
         <DockPanel Margin="0,0,0,8">
-            <Label Style="{StaticResource FieldLabel}" Content="Email:"/>
+            <Label Style="{StaticResource FieldLabel}" Content="Jira username (JIRA__USERNAME):"/>
             <TextBox Text="{Binding JiraEmail, UpdateSourceTrigger=PropertyChanged}"/>
         </DockPanel>
 
         <!-- Jira API Token -->
         <DockPanel Margin="0,0,0,8">
-            <Label Style="{StaticResource FieldLabel}" Content="API Token:"/>
+            <Label Style="{StaticResource FieldLabel}" Content="API token (JIRA__API__TOKEN):"/>
             <PasswordBox x:Name="JiraPasswordBox"
                          ToolTip="Leave blank to keep the existing token"/>
         </DockPanel>

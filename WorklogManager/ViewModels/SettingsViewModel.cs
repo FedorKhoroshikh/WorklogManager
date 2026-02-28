@@ -197,10 +197,21 @@ public class SettingsViewModel : BaseViewModel
     private void LoadFromSettings()
     {
         var s = _settingsService.Load();
-        JiraEmail = s.JiraEmail;
-        JiraBaseUrl = s.JiraBaseUrl;
-        // Tokens are shown as empty — user re-enters them only when changing
-        JiraApiToken = string.Empty;
+        JiraBaseUrl = !string.IsNullOrEmpty(s.JiraBaseUrl)
+            ? s.JiraBaseUrl
+            : "https://tcm-international.atlassian.net";
+
+        // Prefer saved value; fall back to environment variable
+        JiraEmail = !string.IsNullOrEmpty(s.JiraEmail)
+            ? s.JiraEmail
+            : Environment.GetEnvironmentVariable("JIRA_USERNAME") ?? string.Empty;
+
+        // Pre-populate from env var only when no saved token exists yet
+        var savedJiraToken = _settingsService.GetJiraApiToken();
+        JiraApiToken = string.IsNullOrEmpty(savedJiraToken)
+            ? Environment.GetEnvironmentVariable("JIRA_API_TOKEN") ?? string.Empty
+            : string.Empty;
+
         TempoApiToken = string.Empty;
     }
 }
