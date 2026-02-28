@@ -95,10 +95,16 @@ public class TempoApiService : ITempoApiService
         return (false, "Max retries exceeded");
     }
 
+    public Task<(bool Success, string? Error)> TestConnectionAsync(
+        CancellationToken cancellationToken = default) =>
+        TestConnectionAsync(_settingsService.GetTempoApiToken(), cancellationToken);
+
     public async Task<(bool Success, string? Error)> TestConnectionAsync(
+        string token,
         CancellationToken cancellationToken = default)
     {
-        ConfigureAuth();
+        _httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", token);
         try
         {
             var response = await _httpClient.GetAsync("4/worklogs?limit=1", cancellationToken);

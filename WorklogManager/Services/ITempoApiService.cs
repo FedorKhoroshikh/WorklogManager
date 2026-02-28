@@ -17,9 +17,17 @@ public interface ITempoApiService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Validates the Tempo connection by calling GET /4/worklogs?limit=1.
+    /// Validates the Tempo connection using the saved API token.
     /// </summary>
     Task<(bool Success, string? Error)> TestConnectionAsync(
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Validates the Tempo connection using the supplied <paramref name="token"/>.
+    /// Use this to test an unsaved token entered in the Settings UI.
+    /// </summary>
+    Task<(bool Success, string? Error)> TestConnectionAsync(
+        string token,
         CancellationToken cancellationToken = default);
 
     /// <summary>

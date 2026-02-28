@@ -16,10 +16,12 @@ namespace WorklogManager.ViewModels;
 public class SettingsViewModel : BaseViewModel
 {
     private readonly ISettingsService _settingsService;
+    private readonly ITempoApiService _tempoApi;
 
-    public SettingsViewModel(ISettingsService settingsService)
+    public SettingsViewModel(ISettingsService settingsService, ITempoApiService tempoApi)
     {
         _settingsService = settingsService;
+        _tempoApi = tempoApi;
         LoadFromSettings();
 
         TestJiraCommand = new AsyncRelayCommand(TestJiraAsync);
@@ -175,14 +177,10 @@ public class SettingsViewModel : BaseViewModel
                 return;
             }
 
-            using var client = new HttpClient { BaseAddress = new Uri("https://api.tempo.io/") };
-            client.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", token);
-
-            var response = await client.GetAsync("4/worklogs?limit=1", ct);
-            TestStatus = response.StatusCode == HttpStatusCode.OK
+            var (success, error) = await _tempoApi.TestConnectionAsync(token, ct);
+            TestStatus = success
                 ? "Tempo OK — connection successful"
-                : $"Tempo failed: HTTP {(int)response.StatusCode}";
+                : $"Tempo failed: {error}";
         }
         catch (Exception ex)
         {
