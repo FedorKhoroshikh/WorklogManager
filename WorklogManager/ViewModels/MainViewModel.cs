@@ -11,9 +11,7 @@ namespace WorklogManager.ViewModels;
 /// ViewModel for the main window.
 ///
 /// Data flow:
-///   ITimeEntryProvider → GetTimeRecordsAsync (raw rows) → BuildAndRoundRecords (merge + round) → AllRecords → FilteredRecords
-///
-/// The MergeRecords toggle re-runs BuildAndRoundRecords without re-parsing the file.
+///   ITimeEntryProvider → GetTimeRecordsAsync (raw rows) → BuildAndRoundRecords (round) → AllRecords → FilteredRecords
 /// </summary>
 public class MainViewModel : BaseViewModel
 {
@@ -79,23 +77,6 @@ public class MainViewModel : BaseViewModel
     public RelayCommand ClearAllDatesCommand { get; }
 
     // ── Options ───────────────────────────────────────────────────────────────
-
-    private bool _mergeRecords = true;
-    /// <summary>
-    /// When true: records are grouped by Date + IssueKey, durations summed,
-    /// descriptions formatted as a bulleted list.
-    /// When false: one WorklogRecord per CSV row.
-    /// Changing this property re-processes the raw CSV data immediately.
-    /// </summary>
-    public bool MergeRecords
-    {
-        get => _mergeRecords;
-        set
-        {
-            if (SetProperty(ref _mergeRecords, value) && _rawParsedRecords.Count > 0)
-                RefreshRecordsFromRaw();
-        }
-    }
 
     private bool _isDryRun;
     public bool IsDryRun
@@ -440,11 +421,11 @@ public class MainViewModel : BaseViewModel
         win.ShowDialog();
     }
 
-    // ── Merge + Round processing ──────────────────────────────────────────────
+    // ── Round processing ──────────────────────────────────────────────────────
 
     /// <summary>
     /// Rebuilds AllRecords and DateFilters from the raw parsed data,
-    /// applying the current MergeRecords option and 5-minute rounding.
+    /// applying 5-minute rounding.
     /// </summary>
     private void RefreshRecordsFromRaw()
     {
@@ -470,81 +451,31 @@ public class MainViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Optionally merges raw records by Date + IssueKey, then applies 5-minute rounding per day.
+    /// Clones raw records (one per CSV row) and applies 5-minute rounding per day.
     /// </summary>
-    private List<WorklogRecord> BuildAndRoundRecords(IReadOnlyList<WorklogRecord> rawRecords)
+    private static List<WorklogRecord> BuildAndRoundRecords(IReadOnlyList<WorklogRecord> rawRecords)
     {
-        List<WorklogRecord> records;
-
-        if (MergeRecords)
-        {
-            // Group by Date + IssueKey, sum durations, build formatted description
-            records = rawRecords
-                .GroupBy(r => (r.Date.Date, r.IssueKey))
-                .Select(g =>
-                {
-                    var totalSecs = g.Sum(r => r.OriginalTimeSpentSeconds);
-                    return new WorklogRecord
-                    {
-                        Date        = g.Key.Date,
-                        IssueKey    = g.Key.IssueKey,
-                        ProjectName = g.First().ProjectName,
-                        Description = BuildMergedDescription(g.Select(r => r.Description)),
-                        StartTime   = g.Where(r => !string.IsNullOrEmpty(r.StartTime))
-                                       .Select(r => r.StartTime)
-                                       .OrderBy(t => t)
-                                       .FirstOrDefault() ?? string.Empty,
-                        OriginalTimeSpentSeconds = totalSecs,
-                        RoundedTimeSpentSeconds  = totalSecs,
-                        IsSelected   = true,
-                        UploadStatus = "Pending"
-                    };
-                })
-                .OrderBy(r => r.Date)
-                .ThenBy(r => r.IssueKey)
-                .ToList();
-        }
-        else
-        {
-            // One record per CSV row — clone so editing doesn't affect _rawParsedRecords
-            records = rawRecords
-                .Select(r => new WorklogRecord
-                {
-                    Date        = r.Date,
-                    IssueKey    = r.IssueKey,
-                    ProjectName = r.ProjectName,
-                    Description = r.Description,
-                    StartTime   = r.StartTime,
-                    OriginalTimeSpentSeconds = r.OriginalTimeSpentSeconds,
-                    RoundedTimeSpentSeconds  = r.OriginalTimeSpentSeconds,
-                    IsSelected   = true,
-                    UploadStatus = "Pending"
-                })
-                .ToList();
-        }
+        // Clone so editing in the DataGrid doesn't mutate _rawParsedRecords
+        var records = rawRecords
+            .Select(r => new WorklogRecord
+            {
+                Date        = r.Date,
+                IssueKey    = r.IssueKey,
+                ProjectName = r.ProjectName,
+                Description = r.Description,
+                StartTime   = r.StartTime,
+                OriginalTimeSpentSeconds = r.OriginalTimeSpentSeconds,
+                RoundedTimeSpentSeconds  = r.OriginalTimeSpentSeconds,
+                IsSelected   = true,
+                UploadStatus = "Pending"
+            })
+            .ToList();
 
         // Apply 5-minute rounding per day
         foreach (var dayGroup in records.GroupBy(r => r.Date.Date))
             TimeRoundingHelper.ApplyDayRounding(dayGroup.ToList());
 
         return records;
-    }
-
-    /// <summary>
-    /// Combines activity descriptions into a bulleted multi-line list.
-    /// Each description is trimmed, capitalised, and prefixed with "- ".
-    /// Duplicate descriptions (case-insensitive) are removed.
-    /// </summary>
-    private static string BuildMergedDescription(IEnumerable<string> descriptions)
-    {
-        var lines = descriptions
-            .Where(d => !string.IsNullOrWhiteSpace(d))
-            .Select(d => d.Trim())
-            .Select(d => d.Length > 0 ? char.ToUpperInvariant(d[0]) + d[1..] : d)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Select(d => $"- {d}");
-
-        return string.Join('\n', lines);
     }
 
     // ── Filtering ─────────────────────────────────────────────────────────────

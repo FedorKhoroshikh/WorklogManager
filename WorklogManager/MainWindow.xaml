@@ -320,19 +320,6 @@
                         <!-- Right side: toggles -->
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
 
-                            <!-- Merge toggle -->
-                            <Border Background="#EEF6FF" BorderBrush="#AACCEE"
-                                    BorderThickness="1" CornerRadius="3"
-                                    Padding="12,5" Margin="0,0,8,0">
-                                <CheckBox IsChecked="{Binding MergeRecords}"
-                                          VerticalAlignment="Center">
-                                    <TextBlock>
-                                        <Run Text="⊕" FontWeight="Bold"/>
-                                        <Run Text=" Merge by Issue Key"/>
-                                    </TextBlock>
-                                </CheckBox>
-                            </Border>
-
                             <!-- Dry Run toggle -->
                             <Border Background="#FFFBEA" BorderBrush="#DDCC88"
                                     BorderThickness="1" CornerRadius="3" Padding="12,5">
