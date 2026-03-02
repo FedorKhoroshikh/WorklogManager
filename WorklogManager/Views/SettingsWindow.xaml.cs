@@ -28,6 +28,8 @@ public partial class SettingsWindow : Window
         // Seed PasswordBoxes from VM (e.g. when token was pre-populated from an env var)
         if (!string.IsNullOrEmpty(_viewModel.JiraApiToken))
             JiraPasswordBox.Password = _viewModel.JiraApiToken;
+        if (!string.IsNullOrEmpty(_viewModel.TempoApiToken))
+            TempoPasswordBox.Password = _viewModel.TempoApiToken;
     }
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)

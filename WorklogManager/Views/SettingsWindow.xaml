@@ -75,7 +75,7 @@
 
         <!-- Tempo Token -->
         <DockPanel Margin="0,0,0,8">
-            <Label Style="{StaticResource FieldLabel}" Content="API Token:"/>
+            <Label Style="{StaticResource FieldLabel}" Content="API token (TEMPO__API__TOKEN):"/>
             <Button Content="Test"
                     Command="{Binding TestTempoCommand}"
                     Padding="12,4" Margin="8,0,0,0" DockPanel.Dock="Right"/>

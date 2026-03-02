@@ -1,9 +1,11 @@
+using System;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using WorklogManager.Helpers;
-using WorklogManager.Models;
 using WorklogManager.Services;
 
 namespace WorklogManager.ViewModels;
@@ -212,6 +214,7 @@ public class SettingsViewModel : BaseViewModel
             ? Environment.GetEnvironmentVariable("JIRA_API_TOKEN") ?? string.Empty
             : string.Empty;
 
-        TempoApiToken = string.Empty;
+        // Env var takes priority; otherwise leave blank (saved token is used implicitly)
+        TempoApiToken = Environment.GetEnvironmentVariable("TEMPO_API_TOKEN") ?? string.Empty;
     }
 }
