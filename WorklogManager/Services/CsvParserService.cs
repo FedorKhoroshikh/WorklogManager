@@ -77,6 +77,7 @@ public class CsvParserService : ICsvParserService
                 IssueKey = x.IssueKey,
                 ProjectName = x.ProjectName,
                 Description = x.Entry.Description.Trim(),      // actual activity description
+                StartTime = ParseStartTime(x.Entry.StartTimeRaw),
                 OriginalTimeSpentSeconds = x.Entry.DurationSeconds,
                 RoundedTimeSpentSeconds = x.Entry.DurationSeconds,  // rounding done in ViewModel
                 IsSelected = true,
@@ -109,6 +110,7 @@ public class CsvParserService : ICsvParserService
                 IssueKey = x.Match.Groups[1].Value,
                 ProjectName = x.Entry.Project.Trim(),
                 Description = x.Match.Groups[2].Value.Trim(),
+                StartTime = ParseStartTime(x.Entry.StartTimeRaw),
                 OriginalTimeSpentSeconds = x.Entry.DurationSeconds,
                 RoundedTimeSpentSeconds = x.Entry.DurationSeconds,
                 IsSelected = true,
@@ -120,6 +122,17 @@ public class CsvParserService : ICsvParserService
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Parses a raw time string and returns it normalised to "HH:mm:ss".
+    /// Returns <see cref="string.Empty"/> when the input is missing or not a valid time.
+    /// </summary>
+    private static string ParseStartTime(string raw) =>
+        TimeOnly.TryParseExact(raw.Trim(), "HH:mm:ss",
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out var t)
+            ? t.ToString("HH:mm:ss")
+            : string.Empty;
 
     private static string ExtractIssueKey(string project)
     {

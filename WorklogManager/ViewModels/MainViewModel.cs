@@ -490,6 +490,10 @@ public class MainViewModel : BaseViewModel
                         IssueKey    = g.Key.IssueKey,
                         ProjectName = g.First().ProjectName,
                         Description = BuildMergedDescription(g.Select(r => r.Description)),
+                        StartTime   = g.Where(r => !string.IsNullOrEmpty(r.StartTime))
+                                       .Select(r => r.StartTime)
+                                       .OrderBy(t => t)
+                                       .FirstOrDefault() ?? string.Empty,
                         OriginalTimeSpentSeconds = totalSecs,
                         RoundedTimeSpentSeconds  = totalSecs,
                         IsSelected   = true,
@@ -510,6 +514,7 @@ public class MainViewModel : BaseViewModel
                     IssueKey    = r.IssueKey,
                     ProjectName = r.ProjectName,
                     Description = r.Description,
+                    StartTime   = r.StartTime,
                     OriginalTimeSpentSeconds = r.OriginalTimeSpentSeconds,
                     RoundedTimeSpentSeconds  = r.OriginalTimeSpentSeconds,
                     IsSelected   = true,

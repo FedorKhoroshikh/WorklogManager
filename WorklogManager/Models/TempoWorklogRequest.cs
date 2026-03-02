@@ -28,6 +28,14 @@ public class TempoWorklogRequest
     [JsonPropertyName("description")]
     public string Description { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Optional start time in "HH:mm:ss" format.
+    /// Null when not available (omitted from the JSON payload).
+    /// </summary>
+    [JsonPropertyName("startTime")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? StartTime { get; set; }
+
     public static TempoWorklogRequest FromRecord(WorklogRecord record, string authorAccountId) => new()
     {
         IssueId = record.JiraIssueId ?? 0,
@@ -35,6 +43,7 @@ public class TempoWorklogRequest
         IssueKey = record.IssueKey,
         StartDate = record.Date.ToString("yyyy-MM-dd"),
         TimeSpentSeconds = record.RoundedTimeSpentSeconds,
-        Description = record.Description
+        Description = record.Description,
+        StartTime = string.IsNullOrEmpty(record.StartTime) ? null : record.StartTime
     };
 }

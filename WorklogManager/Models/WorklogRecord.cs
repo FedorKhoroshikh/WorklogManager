@@ -20,6 +20,17 @@ public class WorklogRecord : INotifyPropertyChanged, IDataErrorInfo
     /// <summary>Project name from the "Project" CSV column (part after IssueKey). Read-only display field.</summary>
     public string ProjectName { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Start time from the "Start time" CSV column, stored as "HH:mm:ss".
+    /// Empty when not available (e.g. merged records with no common time).
+    /// Passed to Tempo API as the optional startTime field.
+    /// </summary>
+    public string StartTime { get; set; } = string.Empty;
+
+    /// <summary>Start time formatted for display as "HH:mm". Empty when StartTime is not set.</summary>
+    public string StartTimeDisplay =>
+        StartTime.Length >= 5 ? StartTime[..5] : StartTime;
+
     private DateTime _date;
     public DateTime Date
     {
