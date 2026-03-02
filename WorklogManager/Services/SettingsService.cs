@@ -59,4 +59,7 @@ public class SettingsService : ISettingsService
 
     public string GetTempoApiToken()
         => CredentialHelper.Decrypt(Load().TempoApiTokenEncrypted);
+
+    public string GetTogglTrackApiToken()
+        => CredentialHelper.Decrypt(Load().TogglTrackApiTokenEncrypted);
 }

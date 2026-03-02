@@ -97,6 +97,34 @@
             </ScrollViewer>
         </Border>
 
+        <!-- ── TOGGLTRACK ────────────────────────────────────────────── -->
+        <TextBlock Style="{StaticResource SectionHeader}" Text="TogglTrack Connection"/>
+
+        <!-- Base URL -->
+        <DockPanel Margin="0,0,0,8">
+            <Label Style="{StaticResource FieldLabel}" Content="Base URL:"/>
+            <TextBox Text="{Binding TogglTrackBaseUrl, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="https://api.track.toggl.com"/>
+        </DockPanel>
+
+        <!-- Email -->
+        <DockPanel Margin="0,0,0,8">
+            <Label Style="{StaticResource FieldLabel}" Content="Email:"/>
+            <TextBox Text="{Binding TogglTrackEmail, UpdateSourceTrigger=PropertyChanged}"/>
+        </DockPanel>
+
+        <!-- API Token + Test -->
+        <DockPanel Margin="0,0,0,8">
+            <Label Style="{StaticResource FieldLabel}" Content="API token:"/>
+            <Button Content="Test"
+                    Command="{Binding TestTogglTrackCommand}"
+                    Padding="12,4" Margin="8,0,0,0" DockPanel.Dock="Right"/>
+            <PasswordBox x:Name="TogglTrackPasswordBox"
+                         ToolTip="Leave blank to keep the existing token"/>
+        </DockPanel>
+
+        <Separator Margin="0,0,0,16"/>
+
         <!-- ── IMPORT ────────────────────────────────────────────────── -->
         <TextBlock Style="{StaticResource SectionHeader}" Text="Import"/>
 

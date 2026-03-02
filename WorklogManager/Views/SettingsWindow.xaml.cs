@@ -24,12 +24,16 @@ public partial class SettingsWindow : Window
             _viewModel.JiraApiToken = JiraPasswordBox.Password;
         TempoPasswordBox.PasswordChanged += (_, _) =>
             _viewModel.TempoApiToken = TempoPasswordBox.Password;
+        TogglTrackPasswordBox.PasswordChanged += (_, _) =>
+            _viewModel.TogglTrackApiToken = TogglTrackPasswordBox.Password;
 
         // Seed PasswordBoxes from VM (e.g. when token was pre-populated from an env var)
         if (!string.IsNullOrEmpty(_viewModel.JiraApiToken))
             JiraPasswordBox.Password = _viewModel.JiraApiToken;
         if (!string.IsNullOrEmpty(_viewModel.TempoApiToken))
             TempoPasswordBox.Password = _viewModel.TempoApiToken;
+        if (!string.IsNullOrEmpty(_viewModel.TogglTrackApiToken))
+            TogglTrackPasswordBox.Password = _viewModel.TogglTrackApiToken;
     }
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
@@ -40,6 +44,9 @@ public partial class SettingsWindow : Window
 
         if (!string.IsNullOrEmpty(TempoPasswordBox.Password))
             _viewModel.TempoApiToken = TempoPasswordBox.Password;
+
+        if (!string.IsNullOrEmpty(TogglTrackPasswordBox.Password))
+            _viewModel.TogglTrackApiToken = TogglTrackPasswordBox.Password;
 
         if (_viewModel.SaveCommand.CanExecute(null))
             _viewModel.SaveCommand.Execute(null);

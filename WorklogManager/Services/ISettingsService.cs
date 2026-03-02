@@ -12,4 +12,7 @@ public interface ISettingsService
 
     /// <summary>Returns the decrypted Tempo API token.</summary>
     string GetTempoApiToken();
+
+    /// <summary>Returns the decrypted TogglTrack API token.</summary>
+    string GetTogglTrackApiToken();
 }

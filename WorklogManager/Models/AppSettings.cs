@@ -29,4 +29,17 @@ public class AppSettings
     /// (format: "WT-13065 some text") instead of the Project column.
     /// </summary>
     public bool PapasMode { get; set; }
+
+    // ── TogglTrack ────────────────────────────────────────────────────────────
+
+    public string TogglTrackEmail { get; set; } = string.Empty;
+
+    /// <summary>TogglTrack API token encrypted with DPAPI.</summary>
+    public string TogglTrackApiTokenEncrypted { get; set; } = string.Empty;
+
+    /// <summary>TogglTrack API base URL. Default covers cloud; override for self-hosted.</summary>
+    public string TogglTrackBaseUrl { get; set; } = "https://api.track.toggl.com";
+
+    public bool IsTogglTrackConfigured =>
+        !string.IsNullOrWhiteSpace(TogglTrackApiTokenEncrypted);
 }

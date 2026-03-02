@@ -16,6 +16,7 @@ namespace WorklogManager.ViewModels;
 public class MainViewModel : BaseViewModel
 {
     private readonly ITimeEntryProvider _timeEntryProvider;
+    private readonly TogglTrackApiTimeEntryProvider _togglApiProvider;
     private readonly IJiraValidationService _jiraValidator;
     private readonly ITempoApiService _tempoApi;
     private readonly ISettingsService _settingsService;
@@ -28,12 +29,14 @@ public class MainViewModel : BaseViewModel
 
     public MainViewModel(
         ITimeEntryProvider timeEntryProvider,
+        TogglTrackApiTimeEntryProvider togglApiProvider,
         IJiraValidationService jiraValidator,
         ITempoApiService tempoApi,
         ISettingsService settingsService,
         Func<Views.SettingsWindow> settingsWindowFactory)
     {
         _timeEntryProvider = timeEntryProvider;
+        _togglApiProvider  = togglApiProvider;
         _jiraValidator = jiraValidator;
         _tempoApi = tempoApi;
         _settingsService = settingsService;
@@ -43,7 +46,8 @@ public class MainViewModel : BaseViewModel
         FilteredRecords = new ObservableCollection<WorklogRecord>();
         DateFilters = new ObservableCollection<DateFilterItem>();
 
-        LoadCsvCommand = new AsyncRelayCommand(LoadCsvAsync);
+        LoadCsvCommand       = new AsyncRelayCommand(LoadCsvAsync);
+        LoadFromTogglCommand = new AsyncRelayCommand(LoadFromTogglAsync);
         ValidateIssuesCommand = new AsyncRelayCommand(
             ValidateIssuesAsync,
             () => AllRecords.Count > 0);
@@ -68,6 +72,7 @@ public class MainViewModel : BaseViewModel
     // ── Commands ──────────────────────────────────────────────────────────────
 
     public AsyncRelayCommand LoadCsvCommand { get; }
+    public AsyncRelayCommand LoadFromTogglCommand { get; }
     public AsyncRelayCommand ValidateIssuesCommand { get; }
     public AsyncRelayCommand CheckTempoCommand { get; }
     public AsyncRelayCommand SendToTempoCommand { get; }
@@ -166,6 +171,68 @@ public class MainViewModel : BaseViewModel
         catch (Exception ex)
         {
             AppendLog($"Error loading CSV: {ex.Message}");
+        }
+        finally
+        {
+            _activeCommand = null;
+        }
+    }
+
+    // ── Load from TogglTrack API ──────────────────────────────────────────────
+
+    private async Task LoadFromTogglAsync(CancellationToken ct)
+    {
+        _activeCommand = LoadFromTogglCommand;
+
+        var settings = _settingsService.Load();
+        if (!settings.IsTogglTrackConfigured)
+        {
+            AppendLog("TogglTrack API token is not configured. Open Settings.");
+            _activeCommand = null;
+            return;
+        }
+
+        var dlg = new Views.DateRangeWindow
+        {
+            Owner = System.Windows.Application.Current.MainWindow
+        };
+
+        if (dlg.ShowDialog() != true)
+        {
+            _activeCommand = null;
+            return;
+        }
+
+        AppendLog($"Loading from TogglTrack  {dlg.DateFrom:yyyy-MM-dd} → {dlg.DateTo:yyyy-MM-dd}…");
+        Progress = 0;
+
+        try
+        {
+            var context = new TimeEntryProviderContext
+            {
+                DateFrom = dlg.DateFrom,
+                DateTo   = dlg.DateTo
+            };
+
+            _rawParsedRecords = await _togglApiProvider.GetTimeRecordsAsync(context, ct);
+            LoadedFilePath    = $"TogglTrack  {dlg.DateFrom:yyyy-MM-dd} → {dlg.DateTo:yyyy-MM-dd}";
+            ValidationSummary = string.Empty;
+
+            RefreshRecordsFromRaw();
+
+            AppendLog($"Loaded {AllRecords.Count} records " +
+                      $"(from {_rawParsedRecords.Count} TogglTrack entries) " +
+                      $"across {DateFilters.Count} days.");
+            Progress = 100;
+        }
+        catch (OperationCanceledException)
+        {
+            AppendLog("TogglTrack load cancelled.");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"Error loading from TogglTrack: {ex.Message}");
         }
         finally
         {

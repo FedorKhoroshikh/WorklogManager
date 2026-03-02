@@ -47,6 +47,9 @@ public partial class App : Application
         services.AddSingleton<ICsvParserService, CsvParserService>();
         services.AddSingleton<ITimeEntryProvider, TogglTrackCsvTimeEntryProvider>();
 
+        // ── TogglTrack API provider (typed HttpClient, transient lifetime) ──
+        services.AddHttpClient<TogglTrackApiTimeEntryProvider>();
+
         // ── ViewModels (transient — new instance per window) ──
         services.AddTransient<MainViewModel>();
         services.AddTransient<SettingsViewModel>();

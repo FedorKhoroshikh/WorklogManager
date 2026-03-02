@@ -26,8 +26,9 @@ public class SettingsViewModel : BaseViewModel
         _tempoApi = tempoApi;
         LoadFromSettings();
 
-        TestJiraCommand = new AsyncRelayCommand(TestJiraAsync);
-        TestTempoCommand = new AsyncRelayCommand(TestTempoAsync);
+        TestJiraCommand       = new AsyncRelayCommand(TestJiraAsync);
+        TestTempoCommand      = new AsyncRelayCommand(TestTempoAsync);
+        TestTogglTrackCommand = new AsyncRelayCommand(TestTogglTrackAsync);
         SaveCommand = new RelayCommand(Save, () => !string.IsNullOrWhiteSpace(JiraBaseUrl));
     }
 
@@ -79,6 +80,27 @@ public class SettingsViewModel : BaseViewModel
         set => SetProperty(ref _testStatus, value);
     }
 
+    private string _togglTrackEmail = string.Empty;
+    public string TogglTrackEmail
+    {
+        get => _togglTrackEmail;
+        set => SetProperty(ref _togglTrackEmail, value);
+    }
+
+    private string _togglTrackApiToken = string.Empty;
+    public string TogglTrackApiToken
+    {
+        get => _togglTrackApiToken;
+        set => SetProperty(ref _togglTrackApiToken, value);
+    }
+
+    private string _togglTrackBaseUrl = "https://api.track.toggl.com";
+    public string TogglTrackBaseUrl
+    {
+        get => _togglTrackBaseUrl;
+        set => SetProperty(ref _togglTrackBaseUrl, value);
+    }
+
     private bool _isTesting;
     public bool IsTesting
     {
@@ -90,6 +112,7 @@ public class SettingsViewModel : BaseViewModel
 
     public AsyncRelayCommand TestJiraCommand { get; }
     public AsyncRelayCommand TestTempoCommand { get; }
+    public AsyncRelayCommand TestTogglTrackCommand { get; }
     public RelayCommand SaveCommand { get; }
 
     // ── Save ──────────────────────────────────────────────────────────────────
@@ -107,6 +130,14 @@ public class SettingsViewModel : BaseViewModel
             settings.TempoApiTokenEncrypted = CredentialHelper.Encrypt(TempoApiToken);
 
         settings.PapasMode = PapasMode;
+
+        settings.TogglTrackEmail   = TogglTrackEmail.Trim();
+        settings.TogglTrackBaseUrl = string.IsNullOrWhiteSpace(TogglTrackBaseUrl)
+            ? "https://api.track.toggl.com"
+            : TogglTrackBaseUrl.Trim().TrimEnd('/');
+
+        if (!string.IsNullOrEmpty(TogglTrackApiToken))
+            settings.TogglTrackApiTokenEncrypted = CredentialHelper.Encrypt(TogglTrackApiToken);
 
         _settingsService.Save(settings);
         TestStatus = "Settings saved.";
@@ -207,6 +238,65 @@ public class SettingsViewModel : BaseViewModel
         }
     }
 
+    // ── Test TogglTrack ───────────────────────────────────────────────────────
+
+    private async Task TestTogglTrackAsync(CancellationToken ct)
+    {
+        IsTesting = true;
+        TestStatus = "Testing TogglTrack connection…";
+
+        try
+        {
+            var token = string.IsNullOrEmpty(TogglTrackApiToken)
+                ? _settingsService.GetTogglTrackApiToken()
+                : TogglTrackApiToken;
+
+            if (string.IsNullOrEmpty(token))
+            {
+                TestStatus = "TogglTrack API token is empty.";
+                return;
+            }
+
+            var baseUrl = string.IsNullOrWhiteSpace(TogglTrackBaseUrl)
+                ? "https://api.track.toggl.com"
+                : TogglTrackBaseUrl.TrimEnd('/');
+
+            using var client = new HttpClient();
+            var credential = Convert.ToBase64String(
+                System.Text.Encoding.UTF8.GetBytes($"{token.Trim()}:api_token"));
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", credential);
+            client.DefaultRequestHeaders.Accept.Add(
+                new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+            var response = await client.GetAsync($"{baseUrl}/api/v9/me", ct);
+            var body = await response.Content.ReadAsStringAsync(ct);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var me = System.Text.Json.JsonSerializer.Deserialize<WorklogManager.Models.TogglMeResponse>(
+                    body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                TestStatus = $"TogglTrack OK — connected as {me?.Fullname ?? me?.Email ?? "unknown"}" +
+                             $"  (workspace {me?.DefaultWorkspaceId})";
+            }
+            else
+            {
+                var shortBody = body.Length > 400 ? body[..400] + "…" : body;
+                TestStatus = $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}\n\n" +
+                             $"URL: {baseUrl}/api/v9/me\n\n" +
+                             $"Response body:\n{shortBody}";
+            }
+        }
+        catch (Exception ex)
+        {
+            TestStatus = $"TogglTrack error: {ex.Message}";
+        }
+        finally
+        {
+            IsTesting = false;
+        }
+    }
+
     // ── Load ──────────────────────────────────────────────────────────────────
 
     private void LoadFromSettings()
@@ -231,5 +321,17 @@ public class SettingsViewModel : BaseViewModel
         TempoApiToken = Environment.GetEnvironmentVariable("TEMPO_API_TOKEN") ?? string.Empty;
 
         PapasMode = s.PapasMode;
+
+        TogglTrackEmail = !string.IsNullOrEmpty(s.TogglTrackEmail)
+            ? s.TogglTrackEmail
+            : Environment.GetEnvironmentVariable("TOGGL_USERNAME") ?? string.Empty;
+        TogglTrackBaseUrl = !string.IsNullOrEmpty(s.TogglTrackBaseUrl)
+            ? s.TogglTrackBaseUrl
+            : "https://api.track.toggl.com";
+
+        var savedTogglToken = _settingsService.GetTogglTrackApiToken();
+        TogglTrackApiToken = string.IsNullOrEmpty(savedTogglToken)
+            ? Environment.GetEnvironmentVariable("TOGGL_API_TOKEN") ?? string.Empty
+            : string.Empty;
     }
 }

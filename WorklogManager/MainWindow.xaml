@@ -92,7 +92,12 @@
                 <Button Content="📂 Load CSV"
                         Command="{Binding LoadCsvCommand}"
                         Background="#1a8040" Foreground="White"
-                        BorderBrush="#2a9050" Padding="14,4" Margin="0,0,12,0"/>
+                        BorderBrush="#2a9050" Padding="14,4" Margin="0,0,6,0"/>
+
+                <Button Content="📡 Load from Toggl"
+                        Command="{Binding LoadFromTogglCommand}"
+                        Background="#1a5a8a" Foreground="White"
+                        BorderBrush="#2a7ab0" Padding="14,4" Margin="0,0,12,0"/>
 
                 <TextBlock Text="{Binding LoadedFilePath}"
                            Foreground="#CCDDFF" VerticalAlignment="Center"
