@@ -11,13 +11,13 @@ namespace WorklogManager.ViewModels;
 /// ViewModel for the main window.
 ///
 /// Data flow:
-///   CSV → CsvParserService (raw rows) → BuildAndRoundRecords (merge + round) → AllRecords → FilteredRecords
+///   ITimeEntryProvider → GetTimeRecordsAsync (raw rows) → BuildAndRoundRecords (merge + round) → AllRecords → FilteredRecords
 ///
 /// The MergeRecords toggle re-runs BuildAndRoundRecords without re-parsing the file.
 /// </summary>
 public class MainViewModel : BaseViewModel
 {
-    private readonly ICsvParserService _csvParser;
+    private readonly ITimeEntryProvider _timeEntryProvider;
     private readonly IJiraValidationService _jiraValidator;
     private readonly ITempoApiService _tempoApi;
     private readonly ISettingsService _settingsService;
@@ -29,13 +29,13 @@ public class MainViewModel : BaseViewModel
     private IReadOnlyList<WorklogRecord> _rawParsedRecords = Array.Empty<WorklogRecord>();
 
     public MainViewModel(
-        ICsvParserService csvParser,
+        ITimeEntryProvider timeEntryProvider,
         IJiraValidationService jiraValidator,
         ITempoApiService tempoApi,
         ISettingsService settingsService,
         Func<Views.SettingsWindow> settingsWindowFactory)
     {
-        _csvParser = csvParser;
+        _timeEntryProvider = timeEntryProvider;
         _jiraValidator = jiraValidator;
         _tempoApi = tempoApi;
         _settingsService = settingsService;
@@ -169,7 +169,8 @@ public class MainViewModel : BaseViewModel
 
         try
         {
-            _rawParsedRecords = await _csvParser.ParseAsync(dlg.FileName);
+            var context = new TimeEntryProviderContext { FilePath = dlg.FileName };
+            _rawParsedRecords = await _timeEntryProvider.GetTimeRecordsAsync(context, ct);
             LoadedFilePath = dlg.FileName;
             ValidationSummary = string.Empty;
 

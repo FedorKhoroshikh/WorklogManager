@@ -45,6 +45,7 @@ public partial class App : Application
 
         // ── CSV parser (stateless, singleton is fine) ──
         services.AddSingleton<ICsvParserService, CsvParserService>();
+        services.AddSingleton<ITimeEntryProvider, TogglTrackCsvTimeEntryProvider>();
 
         // ── ViewModels (transient — new instance per window) ──
         services.AddTransient<MainViewModel>();
