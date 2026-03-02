@@ -507,10 +507,12 @@ public class MainViewModel : BaseViewModel
         int selectedRecords = FilteredRecords.Count(r => r.IsSelected);
         int totalRecords    = AllRecords.Count;
         double totalHours   = FilteredRecords.Where(r => r.IsSelected).Sum(r => r.RoundedHours);
+        int totalMinutes    = (int)Math.Round(totalHours * 60);
+        string hhmm         = $"{totalMinutes / 60}h {totalMinutes % 60:D2}m";
 
         ExportSummary = $"Export: {selectedDays} / {totalDays} days   " +
                         $"Records: {selectedRecords} / {totalRecords}   " +
-                        $"Total: {totalHours:F2} h";
+                        $"Total: {totalHours:F2} h / {hhmm}";
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
