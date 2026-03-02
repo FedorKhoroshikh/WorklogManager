@@ -61,6 +61,17 @@ public class SettingsViewModel : BaseViewModel
         set => SetProperty(ref _jiraBaseUrl, value);
     }
 
+    private bool _papasMode;
+    /// <summary>
+    /// When true, the Jira issue key is read from the Description column of the CSV
+    /// instead of the Project column.
+    /// </summary>
+    public bool PapasMode
+    {
+        get => _papasMode;
+        set => SetProperty(ref _papasMode, value);
+    }
+
     private string _testStatus = string.Empty;
     public string TestStatus
     {
@@ -94,6 +105,8 @@ public class SettingsViewModel : BaseViewModel
 
         if (!string.IsNullOrEmpty(TempoApiToken))
             settings.TempoApiTokenEncrypted = CredentialHelper.Encrypt(TempoApiToken);
+
+        settings.PapasMode = PapasMode;
 
         _settingsService.Save(settings);
         TestStatus = "Settings saved.";
@@ -216,5 +229,7 @@ public class SettingsViewModel : BaseViewModel
 
         // Env var takes priority; otherwise leave blank (saved token is used implicitly)
         TempoApiToken = Environment.GetEnvironmentVariable("TEMPO_API_TOKEN") ?? string.Empty;
+
+        PapasMode = s.PapasMode;
     }
 }

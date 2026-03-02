@@ -6,7 +6,12 @@ public interface ICsvParserService
 {
     /// <summary>
     /// Parses a TogglTrack Detailed Report CSV file.
-    /// Aggregates rows by (Start date, IssueKey) and applies 5-minute rounding per day.
+    /// Returns one WorklogRecord per non-zero-duration row (no aggregation or rounding).
     /// </summary>
-    Task<IReadOnlyList<WorklogRecord>> ParseAsync(string filePath);
+    /// <param name="filePath">Path to the CSV file.</param>
+    /// <param name="papasMode">
+    /// When true, extracts the Jira issue key from the Description column
+    /// (e.g. "WT-13065 some text") instead of the Project column.
+    /// </param>
+    Task<IReadOnlyList<WorklogRecord>> ParseAsync(string filePath, bool papasMode = false);
 }

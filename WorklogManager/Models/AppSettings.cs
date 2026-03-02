@@ -23,4 +23,10 @@ public class AppSettings
 
     public bool IsTempoConfigured =>
         !string.IsNullOrWhiteSpace(TempoApiTokenEncrypted);
+
+    /// <summary>
+    /// When true, the Jira issue key is extracted from the Description column
+    /// (format: "WT-13065 some text") instead of the Project column.
+    /// </summary>
+    public bool PapasMode { get; set; }
 }

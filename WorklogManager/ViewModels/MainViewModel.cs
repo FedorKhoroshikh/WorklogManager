@@ -169,7 +169,8 @@ public class MainViewModel : BaseViewModel
 
         try
         {
-            var context = new TimeEntryProviderContext { FilePath = dlg.FileName };
+            var papasMode = _settingsService.Load().PapasMode;
+            var context = new TimeEntryProviderContext { FilePath = dlg.FileName, PapasMode = papasMode };
             _rawParsedRecords = await _timeEntryProvider.GetTimeRecordsAsync(context, ct);
             LoadedFilePath = dlg.FileName;
             ValidationSummary = string.Empty;

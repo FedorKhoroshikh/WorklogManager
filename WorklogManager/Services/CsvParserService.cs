@@ -23,13 +23,20 @@ public class CsvParserService : ICsvParserService
     private static readonly Regex ProjectRegex =
         new(@"^([A-Z]+-\d+)\s+(.*)", RegexOptions.Compiled);
 
+    /// <summary>
+    /// Matches a known Jira issue key prefix at the start of the Description field.
+    /// Supported prefixes: WT, CSD, CSM, TIP.
+    /// </summary>
+    private static readonly Regex PapasModeDescriptionRegex =
+        new(@"^((?:WT|CSD|CSM|TIP)-\d+)\s*(.*)", RegexOptions.Compiled);
+
     private static readonly Regex ValidIssueKey =
         new(@"^[A-Z]+-\d+$", RegexOptions.Compiled);
 
-    public async Task<IReadOnlyList<WorklogRecord>> ParseAsync(string filePath)
+    public async Task<IReadOnlyList<WorklogRecord>> ParseAsync(string filePath, bool papasMode = false)
     {
         var entries = await Task.Run(() => ReadCsvEntries(filePath));
-        return ParseToRawRecords(entries);
+        return papasMode ? ParseToRawRecordsPapasMode(entries) : ParseToRawRecords(entries);
     }
 
     // ── CSV reading ──────────────────────────────────────────────────────────
@@ -72,6 +79,38 @@ public class CsvParserService : ICsvParserService
                 Description = x.Entry.Description.Trim(),      // actual activity description
                 OriginalTimeSpentSeconds = x.Entry.DurationSeconds,
                 RoundedTimeSpentSeconds = x.Entry.DurationSeconds,  // rounding done in ViewModel
+                IsSelected = true,
+                UploadStatus = "Pending"
+            })
+            .OrderBy(r => r.Date)
+            .ThenBy(r => r.IssueKey)
+            .ToList();
+    }
+
+    // ── PapasMode parsing (issue key from Description) ───────────────────────
+
+    /// <summary>
+    /// PapasMode variant: the Jira issue key is the first token of the Description field
+    /// (e.g. "WT-13065 tuning local environment"). The remainder becomes the worklog comment.
+    /// </summary>
+    private static List<WorklogRecord> ParseToRawRecordsPapasMode(List<RawEntry> entries)
+    {
+        return entries
+            .Where(e => e.DurationSeconds > 0 && e.StartDate != DateTime.MinValue)
+            .Select(e => new
+            {
+                Entry = e,
+                Match = PapasModeDescriptionRegex.Match(e.Description.Trim())
+            })
+            .Where(x => x.Match.Success)
+            .Select(x => new WorklogRecord
+            {
+                Date = x.Entry.StartDate,
+                IssueKey = x.Match.Groups[1].Value,
+                ProjectName = x.Entry.Project.Trim(),
+                Description = x.Match.Groups[2].Value.Trim(),
+                OriginalTimeSpentSeconds = x.Entry.DurationSeconds,
+                RoundedTimeSpentSeconds = x.Entry.DurationSeconds,
                 IsSelected = true,
                 UploadStatus = "Pending"
             })

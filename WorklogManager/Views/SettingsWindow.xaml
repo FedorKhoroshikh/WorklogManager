@@ -97,6 +97,18 @@
             </ScrollViewer>
         </Border>
 
+        <!-- ── IMPORT ────────────────────────────────────────────────── -->
+        <TextBlock Style="{StaticResource SectionHeader}" Text="Import"/>
+
+        <DockPanel Margin="0,0,0,16">
+            <Label Style="{StaticResource FieldLabel}" Content=""/>
+            <CheckBox IsChecked="{Binding PapasMode}" VerticalAlignment="Center"
+                      Content="Papas mode — read Jira issue key from Description column"
+                      ToolTip="Enable when the CSV Description starts with the issue key (e.g. WT-13065 some text). Supported prefixes: WT, CSD, CSM, TIP."/>
+        </DockPanel>
+
+        <Separator Margin="0,0,0,16"/>
+
         <!-- ── BUTTONS ───────────────────────────────────────────────── -->
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Save" IsDefault="True" Click="SaveButton_Click"

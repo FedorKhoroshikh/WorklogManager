@@ -18,6 +18,6 @@ public class TogglTrackCsvTimeEntryProvider : ITimeEntryProvider
         if (string.IsNullOrEmpty(context.FilePath))
             throw new ArgumentException("FilePath must be set for CSV import.", nameof(context));
 
-        return _csvParser.ParseAsync(context.FilePath);
+        return _csvParser.ParseAsync(context.FilePath, context.PapasMode);
     }
 }
