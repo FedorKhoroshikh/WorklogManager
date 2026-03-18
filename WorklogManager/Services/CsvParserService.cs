@@ -72,6 +72,7 @@ public class CsvParserService : ICsvParserService
                 Description = x.Entry.Description.Trim(),      // actual activity description
                 OriginalTimeSpentSeconds = x.Entry.DurationSeconds,
                 RoundedTimeSpentSeconds = x.Entry.DurationSeconds,  // rounding done in ViewModel
+                StartTime = x.Entry.StartTime,
                 IsSelected = true,
                 UploadStatus = "Pending"
             })
@@ -113,6 +114,11 @@ public class CsvParserService : ICsvParserService
             DateTime.TryParseExact(StartDateRaw, "yyyy-MM-dd",
                 CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
                 ? d : DateTime.MinValue;
+
+        /// <summary>Start time parsed from "HH:mm:ss".</summary>
+        public TimeSpan? StartTime =>
+            TimeSpan.TryParseExact(StartTimeRaw, ["h\\:mm\\:ss", "hh\\:mm\\:ss"],
+                CultureInfo.InvariantCulture, out var t) ? t : null;
 
         public int DurationSeconds
         {

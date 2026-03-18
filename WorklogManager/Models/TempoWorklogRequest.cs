@@ -22,6 +22,11 @@ public class TempoWorklogRequest
     [JsonPropertyName("startDate")]
     public string StartDate { get; set; } = string.Empty;   // "YYYY-MM-DD"
 
+    /// <summary>Time of day when work started, format "HH:mm:ss". Optional — Tempo defaults to 00:00:00.</summary>
+    [JsonPropertyName("startTime")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? StartTime { get; set; }
+
     [JsonPropertyName("timeSpentSeconds")]
     public int TimeSpentSeconds { get; set; }
 
@@ -34,6 +39,7 @@ public class TempoWorklogRequest
         AuthorAccountId = authorAccountId,
         IssueKey = record.IssueKey,
         StartDate = record.Date.ToString("yyyy-MM-dd"),
+        StartTime = record.StartTime?.ToString(@"hh\:mm\:ss"),
         TimeSpentSeconds = record.RoundedTimeSpentSeconds,
         Description = record.Description
     };

@@ -482,6 +482,13 @@ public class MainViewModel : BaseViewModel
                 .Select(g =>
                 {
                     var totalSecs = g.Sum(r => r.OriginalTimeSpentSeconds);
+                    // Use the earliest start time from the group
+                    var earliestStart = g
+                        .Where(r => r.StartTime.HasValue)
+                        .Select(r => r.StartTime!.Value)
+                        .OrderBy(t => t)
+                        .Cast<TimeSpan?>()
+                        .FirstOrDefault();
                     return new WorklogRecord
                     {
                         Date        = g.Key.Date,
@@ -490,6 +497,7 @@ public class MainViewModel : BaseViewModel
                         Description = BuildMergedDescription(g.Select(r => r.Description)),
                         OriginalTimeSpentSeconds = totalSecs,
                         RoundedTimeSpentSeconds  = totalSecs,
+                        StartTime    = earliestStart,
                         IsSelected   = true,
                         UploadStatus = "Pending"
                     };
@@ -510,6 +518,7 @@ public class MainViewModel : BaseViewModel
                     Description = r.Description,
                     OriginalTimeSpentSeconds = r.OriginalTimeSpentSeconds,
                     RoundedTimeSpentSeconds  = r.OriginalTimeSpentSeconds,
+                    StartTime    = r.StartTime,
                     IsSelected   = true,
                     UploadStatus = "Pending"
                 })

@@ -20,6 +20,9 @@ public class WorklogRecord : INotifyPropertyChanged, IDataErrorInfo
     /// <summary>Project name from the "Project" CSV column (part after IssueKey). Read-only display field.</summary>
     public string ProjectName { get; set; } = string.Empty;
 
+    /// <summary>Time of day when work on this entry started (from TogglTrack CSV). Sent to Tempo as startTime.</summary>
+    public TimeSpan? StartTime { get; set; }
+
     private DateTime _date;
     public DateTime Date
     {
