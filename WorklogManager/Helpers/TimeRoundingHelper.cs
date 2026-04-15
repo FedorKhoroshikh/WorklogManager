@@ -85,6 +85,109 @@ public static class TimeRoundingHelper
     }
 
     /// <summary>
+    /// Rounds durations to the nearest 5-minute boundary (minimum 5 min),
+    /// then resolves overlaps within each day.
+    /// </summary>
+    public static void RoundTimestampsAndDurations(IList<WorklogRecord> records)
+    {
+        // Step 1: Round all start times
+        foreach (var r in records)
+        {
+            if (!string.IsNullOrWhiteSpace(r.StartTime))
+                r.StartTime = RoundStartTimeTo5Min(r.StartTime);
+        }
+
+        // Step 2: Round all durations to nearest 5 min (minimum 5 min)
+        foreach (var r in records)
+            r.RoundedTimeSpentSeconds = RoundToNearest5Min(r.RoundedTimeSpentSeconds);
+
+        // Step 3: Resolve overlaps per day
+        foreach (var dayGroup in records.GroupBy(r => r.Date.Date))
+            ResolveOverlaps(dayGroup.ToList());
+    }
+
+    /// <summary>
+    /// Parses a "HH:mm:ss" or "HH:mm" string into total minutes since midnight.
+    /// Returns null if parsing fails or the string is empty.
+    /// </summary>
+    private static int? StartTimeToMinutes(string startTime)
+    {
+        if (string.IsNullOrWhiteSpace(startTime)) return null;
+        var parts = startTime.Split(':');
+        if (parts.Length < 2) return null;
+        if (!int.TryParse(parts[0], out int h) || !int.TryParse(parts[1], out int m)) return null;
+        return h * 60 + m;
+    }
+
+    /// <summary>
+    /// Converts total minutes since midnight back to "HH:mm:00" string.
+    /// </summary>
+    private static string MinutesToStartTime(int totalMinutes)
+    {
+        if (totalMinutes < 0) totalMinutes = 0;
+        int h = (totalMinutes / 60) % 24;
+        int m = totalMinutes % 60;
+        return $"{h:D2}:{m:D2}:00";
+    }
+
+    /// <summary>
+    /// Resolves overlaps in a single day's records sorted by start time.
+    /// When TS_A + DUR_A > TS_B (overlap):
+    ///   if DUR_A > DUR_B → DUR_A -= 5 min
+    ///   else             → DUR_B -= 5 min; TS_B += 5 min
+    /// Repeats until no overlaps remain.
+    /// </summary>
+    private static void ResolveOverlaps(IList<WorklogRecord> dayRecords)
+    {
+        // Only consider records with parseable start times
+        var sorted = dayRecords
+            .Where(r => StartTimeToMinutes(r.StartTime) != null)
+            .OrderBy(r => StartTimeToMinutes(r.StartTime))
+            .ToList();
+
+        if (sorted.Count < 2) return;
+
+        // Iterate until no overlaps remain (with safety limit)
+        bool changed = true;
+        int maxIterations = sorted.Count * 10;
+        while (changed && maxIterations-- > 0)
+        {
+            changed = false;
+            // Re-sort after potential TS_B shifts
+            sorted = sorted.OrderBy(r => StartTimeToMinutes(r.StartTime)).ToList();
+
+            for (int i = 0; i < sorted.Count - 1; i++)
+            {
+                var a = sorted[i];
+                var b = sorted[i + 1];
+
+                int tsA = StartTimeToMinutes(a.StartTime)!.Value;
+                int durA = a.RoundedTimeSpentSeconds / OneMinuteInSeconds;
+                int tsB = StartTimeToMinutes(b.StartTime)!.Value;
+                int durB = b.RoundedTimeSpentSeconds / OneMinuteInSeconds;
+
+                if (tsA + durA > tsB)
+                {
+                    if (durA > durB)
+                    {
+                        // Shrink A (but not below 5 min)
+                        int newDurA = Math.Max(5, durA - 5);
+                        a.RoundedTimeSpentSeconds = newDurA * OneMinuteInSeconds;
+                    }
+                    else
+                    {
+                        // Shrink B and shift B forward (but B duration not below 5 min)
+                        int newDurB = Math.Max(5, durB - 5);
+                        b.RoundedTimeSpentSeconds = newDurB * OneMinuteInSeconds;
+                        b.StartTime = MinutesToStartTime(tsB + 5);
+                    }
+                    changed = true;
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// Applies per-record 5-minute rounding to all records belonging to one day,
     /// then compensates any deficit so the day total does not decrease.
     /// </summary>

@@ -559,21 +559,15 @@ public class MainViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Rounds all StartTime timestamps in AllRecords to the nearest 5-minute boundary.
+    /// Rounds all start times and durations to 5-minute boundaries,
+    /// then resolves any overlaps within each day.
     /// </summary>
     private void RoundAllTimestamps()
     {
-        int rounded = 0;
-        foreach (var record in AllRecords)
-        {
-            if (string.IsNullOrWhiteSpace(record.StartTime)) continue;
-
-            var original = record.StartTime;
-            record.StartTime = TimeRoundingHelper.RoundStartTimeTo5Min(original);
-            if (record.StartTime != original) rounded++;
-        }
-
-        AppendLog($"Rounded {rounded} start-time timestamps to 5-minute boundaries.");
+        var records = AllRecords.ToList();
+        TimeRoundingHelper.RoundTimestampsAndDurations(records);
+        AppendLog($"Rounded {records.Count} entries (start times + durations) to 5-minute boundaries.");
+        UpdateSummary();
     }
 
     // ── Filtering ─────────────────────────────────────────────────────────────
