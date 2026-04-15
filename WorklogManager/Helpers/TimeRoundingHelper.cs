@@ -85,25 +85,64 @@ public static class TimeRoundingHelper
     }
 
     /// <summary>
-    /// Rounds durations to the nearest 5-minute boundary (minimum 5 min),
-    /// then resolves overlaps within each day.
+    /// Rounds start times and durations to 5-minute boundaries, adjusting
+    /// adjacent durations to preserve timeline continuity, then resolves overlaps.
     /// </summary>
     public static void RoundTimestampsAndDurations(IList<WorklogRecord> records)
     {
-        // Step 1: Round all start times
-        foreach (var r in records)
+        // Process per day so adjacency is meaningful
+        foreach (var dayGroup in records.GroupBy(r => r.Date.Date))
         {
-            if (!string.IsNullOrWhiteSpace(r.StartTime))
+            var dayRecords = dayGroup
+                .Where(r => StartTimeToSeconds(r.StartTime) != null)
+                .OrderBy(r => StartTimeToSeconds(r.StartTime))
+                .ToList();
+
+            // Step 1: Round start times, distributing deltas to adjacent durations
+            for (int i = 0; i < dayRecords.Count; i++)
+            {
+                var r = dayRecords[i];
+                int originalSeconds = StartTimeToSeconds(r.StartTime)!.Value;
                 r.StartTime = RoundStartTimeTo5Min(r.StartTime);
+                int roundedSeconds = StartTimeToSeconds(r.StartTime)!.Value;
+                int delta = roundedSeconds - originalSeconds; // positive = shifted forward
+
+                if (delta != 0)
+                {
+                    // Previous entry's duration grows/shrinks by the delta
+                    if (i > 0)
+                        dayRecords[i - 1].RoundedTimeSpentSeconds = Math.Max(0, dayRecords[i - 1].RoundedTimeSpentSeconds + delta);
+
+                    // Current entry's duration adjusts inversely
+                    r.RoundedTimeSpentSeconds = Math.Max(0, r.RoundedTimeSpentSeconds - delta);
+                }
+            }
+
+            // Step 2: Round all durations to nearest 5 min (minimum 5 min)
+            foreach (var r in dayRecords)
+                r.RoundedTimeSpentSeconds = RoundToNearest5Min(r.RoundedTimeSpentSeconds);
+
+            // Step 3: Resolve overlaps
+            ResolveOverlaps(dayRecords);
         }
 
-        // Step 2: Round all durations to nearest 5 min (minimum 5 min)
-        foreach (var r in records)
+        // Also round durations for records without parseable start times
+        foreach (var r in records.Where(r => StartTimeToSeconds(r.StartTime) == null))
             r.RoundedTimeSpentSeconds = RoundToNearest5Min(r.RoundedTimeSpentSeconds);
+    }
 
-        // Step 3: Resolve overlaps per day
-        foreach (var dayGroup in records.GroupBy(r => r.Date.Date))
-            ResolveOverlaps(dayGroup.ToList());
+    /// <summary>
+    /// Parses a "HH:mm:ss" or "HH:mm" string into total seconds since midnight.
+    /// Returns null if parsing fails or the string is empty.
+    /// </summary>
+    private static int? StartTimeToSeconds(string startTime)
+    {
+        if (string.IsNullOrWhiteSpace(startTime)) return null;
+        var parts = startTime.Split(':');
+        if (parts.Length < 2) return null;
+        if (!int.TryParse(parts[0], out int h) || !int.TryParse(parts[1], out int m)) return null;
+        int s = parts.Length >= 3 && int.TryParse(parts[2], out int sec) ? sec : 0;
+        return h * 3600 + m * 60 + s;
     }
 
     /// <summary>
