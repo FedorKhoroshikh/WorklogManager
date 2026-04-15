@@ -16,9 +16,9 @@ public partial class DateRangeWindow : Window
     {
         InitializeComponent();
 
-        // Default: first day of the current month → today
+        // Default: today → today
         var today = DateTime.Today;
-        FromPicker.SelectedDate = new DateTime(today.Year, today.Month, 1);
+        FromPicker.SelectedDate = today;
         ToPicker.SelectedDate   = today;
     }
 
