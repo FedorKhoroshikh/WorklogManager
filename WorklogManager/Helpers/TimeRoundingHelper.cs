@@ -23,6 +23,52 @@ public static class TimeRoundingHelper
     private const int OneMinuteInSeconds = 60;
 
     /// <summary>
+    /// Rounds a "HH:mm:ss" start-time string to the nearest 5-minute boundary.
+    /// Rules (based on last digit of minutes):
+    ///   3,4,5,6,7 → round to 5   (e.g. 10:33 → 10:35, 10:17 → 10:15)
+    ///   0,1,2,8,9 → round to 0   (e.g. 10:51 → 10:50, 10:48 → 10:50, 10:59 → 11:00)
+    /// Seconds are always zeroed out.
+    /// </summary>
+    public static string RoundStartTimeTo5Min(string startTime)
+    {
+        if (string.IsNullOrWhiteSpace(startTime)) return startTime;
+
+        // Parse hours and minutes from "HH:mm:ss" or "HH:mm"
+        var parts = startTime.Split(':');
+        if (parts.Length < 2) return startTime;
+
+        if (!int.TryParse(parts[0], out int hours) || !int.TryParse(parts[1], out int minutes))
+            return startTime;
+
+        int lastDigit = minutes % 10;
+        int roundedMinutes;
+
+        if (lastDigit is >= 3 and <= 7)
+        {
+            // Round to nearest 5: replace last digit with 5
+            roundedMinutes = (minutes / 10) * 10 + 5;
+        }
+        else
+        {
+            // Round to nearest 0: 0,1,2 → down to 0; 8,9 → up to next 0
+            if (lastDigit <= 2)
+                roundedMinutes = (minutes / 10) * 10;
+            else // 8 or 9
+                roundedMinutes = (minutes / 10) * 10 + 10;
+        }
+
+        // Handle minute overflow
+        if (roundedMinutes >= 60)
+        {
+            roundedMinutes -= 60;
+            hours++;
+            if (hours >= 24) hours = 0;
+        }
+
+        return $"{hours:D2}:{roundedMinutes:D2}:00";
+    }
+
+    /// <summary>
     /// Rounds a duration (in seconds) to the nearest 5-minute boundary.
     /// The minimum result is 5 minutes (300 s) — zero-duration entries become 5 min.
     /// </summary>

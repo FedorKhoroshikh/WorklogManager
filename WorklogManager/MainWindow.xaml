@@ -338,6 +338,9 @@
                         <!-- Left side: action buttons -->
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Button Style="{StaticResource ActionBtn}"
+                                    Content="⏱ Round all to 5 min"
+                                    Command="{Binding RoundTimestampsCommand}"/>
+                            <Button Style="{StaticResource ActionBtn}"
                                     Content="✔ Validate Issues"
                                     Command="{Binding ValidateIssuesCommand}"/>
                             <Button Style="{StaticResource ActionBtn}"

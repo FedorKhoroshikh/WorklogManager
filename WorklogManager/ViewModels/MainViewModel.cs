@@ -57,6 +57,9 @@ public class MainViewModel : BaseViewModel
         SendToTempoCommand = new AsyncRelayCommand(
             SendToTempoAsync,
             () => FilteredRecords.Any(r => r.IsSelected && r.IsValid));
+        RoundTimestampsCommand = new RelayCommand(
+            RoundAllTimestamps,
+            () => AllRecords.Count > 0);
         CancelCommand = new RelayCommand(CancelCurrent, () => _activeCommand?.IsExecuting == true);
         OpenSettingsCommand = new RelayCommand(OpenSettings);
         SelectAllDatesCommand = new RelayCommand(() => SetAllDates(true));
@@ -76,6 +79,7 @@ public class MainViewModel : BaseViewModel
     public AsyncRelayCommand ValidateIssuesCommand { get; }
     public AsyncRelayCommand CheckTempoCommand { get; }
     public AsyncRelayCommand SendToTempoCommand { get; }
+    public RelayCommand RoundTimestampsCommand { get; }
     public RelayCommand CancelCommand { get; }
     public RelayCommand OpenSettingsCommand { get; }
     public RelayCommand SelectAllDatesCommand { get; }
@@ -89,6 +93,12 @@ public class MainViewModel : BaseViewModel
         get => _isDryRun;
         set => SetProperty(ref _isDryRun, value);
     }
+
+    /// <summary>
+    /// When true, per-day duration rounding (5-min snap with compensation) is applied
+    /// automatically on load. Set to false to keep original durations.
+    /// </summary>
+    private bool IsDurationRoundingActive { get; } = false;
 
     // ── Display properties ────────────────────────────────────────────────────
 
@@ -518,9 +528,9 @@ public class MainViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Clones raw records (one per CSV row) and applies 5-minute rounding per day.
+    /// Clones raw records (one per CSV row) and optionally applies duration rounding per day.
     /// </summary>
-    private static List<WorklogRecord> BuildAndRoundRecords(IReadOnlyList<WorklogRecord> rawRecords)
+    private List<WorklogRecord> BuildAndRoundRecords(IReadOnlyList<WorklogRecord> rawRecords)
     {
         // Clone so editing in the DataGrid doesn't mutate _rawParsedRecords
         var records = rawRecords
@@ -538,11 +548,32 @@ public class MainViewModel : BaseViewModel
             })
             .ToList();
 
-        // Apply 5-minute rounding per day
-        foreach (var dayGroup in records.GroupBy(r => r.Date.Date))
-            TimeRoundingHelper.ApplyDayRounding(dayGroup.ToList());
+        // Apply 5-minute duration rounding per day (only when enabled)
+        if (IsDurationRoundingActive)
+        {
+            foreach (var dayGroup in records.GroupBy(r => r.Date.Date))
+                TimeRoundingHelper.ApplyDayRounding(dayGroup.ToList());
+        }
 
         return records;
+    }
+
+    /// <summary>
+    /// Rounds all StartTime timestamps in AllRecords to the nearest 5-minute boundary.
+    /// </summary>
+    private void RoundAllTimestamps()
+    {
+        int rounded = 0;
+        foreach (var record in AllRecords)
+        {
+            if (string.IsNullOrWhiteSpace(record.StartTime)) continue;
+
+            var original = record.StartTime;
+            record.StartTime = TimeRoundingHelper.RoundStartTimeTo5Min(original);
+            if (record.StartTime != original) rounded++;
+        }
+
+        AppendLog($"Rounded {rounded} start-time timestamps to 5-minute boundaries.");
     }
 
     // ── Filtering ─────────────────────────────────────────────────────────────

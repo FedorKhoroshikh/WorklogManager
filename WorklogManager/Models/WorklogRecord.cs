@@ -25,7 +25,12 @@ public class WorklogRecord : INotifyPropertyChanged, IDataErrorInfo
     /// Empty when not available (e.g. merged records with no common time).
     /// Passed to Tempo API as the optional startTime field.
     /// </summary>
-    public string StartTime { get; set; } = string.Empty;
+    private string _startTime = string.Empty;
+    public string StartTime
+    {
+        get => _startTime;
+        set { _startTime = value; OnPropertyChanged(); OnPropertyChanged(nameof(StartTimeDisplay)); }
+    }
 
     /// <summary>Start time formatted for display as "HH:mm". Empty when StartTime is not set.</summary>
     public string StartTimeDisplay =>
