@@ -29,12 +29,26 @@ public class WorklogRecord : INotifyPropertyChanged, IDataErrorInfo
     public string StartTime
     {
         get => _startTime;
-        set { _startTime = value; OnPropertyChanged(); OnPropertyChanged(nameof(StartTimeDisplay)); }
+        set { _startTime = value; OnPropertyChanged(); OnPropertyChanged(nameof(StartTimeDisplay)); OnPropertyChanged(nameof(EndTimeDisplay)); }
     }
 
     /// <summary>Start time formatted for display as "HH:mm". Empty when StartTime is not set.</summary>
     public string StartTimeDisplay =>
         StartTime.Length >= 5 ? StartTime[..5] : StartTime;
+
+    /// <summary>End time (start + rounded duration) formatted as "HH:mm". Empty when StartTime is not set.</summary>
+    public string EndTimeDisplay
+    {
+        get
+        {
+            if (StartTime.Length < 5) return string.Empty;
+            var parts = StartTime.Split(':');
+            if (parts.Length < 2 || !int.TryParse(parts[0], out int h) || !int.TryParse(parts[1], out int m))
+                return string.Empty;
+            int totalMinutes = h * 60 + m + RoundedTimeSpentSeconds / 60;
+            return $"{(totalMinutes / 60) % 24:D2}:{totalMinutes % 60:D2}";
+        }
+    }
 
     private DateTime _date;
     public DateTime Date
@@ -85,6 +99,7 @@ public class WorklogRecord : INotifyPropertyChanged, IDataErrorInfo
             _roundedTimeSpentSeconds = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(RoundedHours));
+            OnPropertyChanged(nameof(EndTimeDisplay));
             OnPropertyChanged(nameof(IsValid));
         }
     }

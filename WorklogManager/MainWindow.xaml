@@ -197,6 +197,18 @@
                             Binding="{Binding DateDisplay}" IsReadOnly="True"
                             FontFamily="Consolas"/>
 
+                        <!-- IssueKey (editable + validated) -->
+                        <DataGridTextColumn Header="Issue Key" Width="105"
+                            FontFamily="Consolas"
+                            CellStyle="{StaticResource ValidatedCell}">
+                            <DataGridTextColumn.Binding>
+                                <Binding Path="IssueKey"
+                                         UpdateSourceTrigger="LostFocus"
+                                         ValidatesOnDataErrors="True"
+                                         NotifyOnValidationError="True"/>
+                            </DataGridTextColumn.Binding>
+                        </DataGridTextColumn>
+
                         <!-- Start time (read-only) -->
                         <DataGridTextColumn Header="Start" Width="52"
                             Binding="{Binding StartTimeDisplay}" IsReadOnly="True"
@@ -208,16 +220,15 @@
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
 
-                        <!-- IssueKey (editable + validated) -->
-                        <DataGridTextColumn Header="Issue Key" Width="105"
-                            FontFamily="Consolas"
-                            CellStyle="{StaticResource ValidatedCell}">
-                            <DataGridTextColumn.Binding>
-                                <Binding Path="IssueKey"
-                                         UpdateSourceTrigger="LostFocus"
-                                         ValidatesOnDataErrors="True"
-                                         NotifyOnValidationError="True"/>
-                            </DataGridTextColumn.Binding>
+                        <!-- End time (read-only, calculated) -->
+                        <DataGridTextColumn Header="End" Width="52"
+                            Binding="{Binding EndTimeDisplay}" IsReadOnly="True"
+                            FontFamily="Consolas">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#666666"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
 
                         <!-- Hours (editable — snaps to nearest 5 min on commit) -->
