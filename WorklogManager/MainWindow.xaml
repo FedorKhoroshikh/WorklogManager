@@ -21,10 +21,10 @@
              in code-behind when the "Group by Issue Key" checkbox is toggled. -->
         <CollectionViewSource x:Key="RecordsView" Source="{Binding FilteredRecords}"/>
 
-        <!-- DataGrid row colour by status -->
+        <!-- DataGrid row colour by status (later triggers win in WPF) -->
         <Style x:Key="RowStyle" TargetType="DataGridRow">
             <Style.Triggers>
-                <!-- Already exists in Tempo → yellow (checked first so Error/Success can override) -->
+                <!-- Already exists in Tempo → yellow -->
                 <DataTrigger Binding="{Binding ExistsInTempo}" Value="True">
                     <Setter Property="Background" Value="#FFFDE7"/>
                     <Setter Property="Foreground" Value="#6B5700"/>
@@ -37,6 +37,18 @@
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IssueExists}" Value="False">
                     <Setter Property="Foreground" Value="#AA4400"/>
+                </DataTrigger>
+                <!-- Zero-duration entry — must be reviewed (orange) -->
+                <DataTrigger Binding="{Binding IsZeroDuration}" Value="True">
+                    <Setter Property="Background" Value="#FFE9CC"/>
+                    <Setter Property="Foreground" Value="#A04A00"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+                <!-- Overlapping with another entry on the same day (red) -->
+                <DataTrigger Binding="{Binding HasOverlap}" Value="True">
+                    <Setter Property="Background" Value="#FFD6D6"/>
+                    <Setter Property="Foreground" Value="#A00000"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>

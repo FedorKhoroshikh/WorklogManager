@@ -56,7 +56,9 @@ public class MainViewModel : BaseViewModel
             () => AllRecords.Count > 0);
         SendToTempoCommand = new AsyncRelayCommand(
             SendToTempoAsync,
-            () => FilteredRecords.Any(r => r.IsSelected && r.IsValid));
+            () => FilteredRecords.Any(r => r.IsSelected)
+               && FilteredRecords.Where(r => r.IsSelected)
+                                 .All(r => r.IsValid && !r.HasOverlap));
         RoundTimestampsCommand = new RelayCommand(
             RoundAllTimestamps,
             () => AllRecords.Count > 0);
@@ -409,8 +411,18 @@ public class MainViewModel : BaseViewModel
             return;
         }
 
-        var toUpload = FilteredRecords
-            .Where(r => r.IsSelected && r.IsValid && r.IssueExists != false)
+        var selected = FilteredRecords.Where(r => r.IsSelected).ToList();
+        int zero       = selected.Count(r => r.IsZeroDuration);
+        int overlapping = selected.Count(r => r.HasOverlap);
+        if (zero > 0 || overlapping > 0)
+        {
+            AppendLog($"Upload blocked: {zero} zero-duration, {overlapping} overlapping selected " +
+                      "entries must be resolved first (edit or uncheck them).");
+            return;
+        }
+
+        var toUpload = selected
+            .Where(r => r.IsValid && r.IssueExists != false)
             .ToList();
 
         if (toUpload.Count == 0)
@@ -528,6 +540,7 @@ public class MainViewModel : BaseViewModel
 
         _jiraValidator.ClearCache();
         ValidationSummary = string.Empty;
+        DetectOverlaps();
         RebuildFilteredRecords();
     }
 
@@ -570,9 +583,45 @@ public class MainViewModel : BaseViewModel
     {
         var records = AllRecords.ToList();
         TimeRoundingHelper.RoundTimestampsAndDurations(records);
-        AppendLog($"Rounded {records.Count} entries (start times + durations) to 5-minute boundaries.");
+        DetectOverlaps();
+
+        int zero = records.Count(r => r.IsZeroDuration);
+        int overlapping = records.Count(r => r.HasOverlap);
+        AppendLog($"Rounded {records.Count} entries to 5-minute boundaries  " +
+                  $"(zero-duration: {zero}, overlapping: {overlapping}).");
         UpdateSummary();
         GroupedViewRefreshRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Marks records that overlap another entry on the same day (sorted by start time).
+    /// Records without a parseable start time are ignored.
+    /// </summary>
+    private void DetectOverlaps()
+    {
+        foreach (var r in AllRecords) r.HasOverlap = false;
+
+        foreach (var dayGroup in AllRecords.GroupBy(r => r.Date.Date))
+        {
+            var ordered = dayGroup
+                .Where(r => TimeRoundingHelper.StartTimeToMinutes(r.StartTime) != null)
+                .OrderBy(r => TimeRoundingHelper.StartTimeToMinutes(r.StartTime))
+                .ToList();
+
+            for (int i = 0; i < ordered.Count - 1; i++)
+            {
+                var a = ordered[i];
+                var b = ordered[i + 1];
+                int aStart = TimeRoundingHelper.StartTimeToMinutes(a.StartTime)!.Value;
+                int aDur   = a.RoundedTimeSpentSeconds / 60;
+                int bStart = TimeRoundingHelper.StartTimeToMinutes(b.StartTime)!.Value;
+                if (aStart + aDur > bStart)
+                {
+                    a.HasOverlap = true;
+                    b.HasOverlap = true;
+                }
+            }
+        }
     }
 
     // ── Filtering ─────────────────────────────────────────────────────────────

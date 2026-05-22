@@ -70,7 +70,7 @@ public static class TimeRoundingHelper
 
     /// <summary>
     /// Rounds a duration (in seconds) to the nearest 5-minute boundary.
-    /// The minimum result is 5 minutes (300 s) — zero-duration entries become 5 min.
+    /// Sub-3-minute entries collapse to 0 (no longer extended to 5 min).
     /// </summary>
     public static int RoundToNearest5Min(int seconds)
     {
@@ -81,54 +81,71 @@ public static class TimeRoundingHelper
             ? totalMinutes - remainder          // round down  (0,1,2 → subtract)
             : totalMinutes + (5 - remainder);   // round up    (3,4   → add)
 
-        return Math.Max(5, roundedMinutes) * OneMinuteInSeconds;
+        return Math.Max(0, roundedMinutes) * OneMinuteInSeconds;
     }
 
     /// <summary>
-    /// Rounds start times and durations to 5-minute boundaries, adjusting
-    /// adjacent durations to preserve timeline continuity, then resolves overlaps.
+    /// Rounds each entry's start and end times independently to the nearest 5-minute
+    /// boundary; the new duration is (roundedEnd - roundedStart), floored at 0.
+    /// Entries shorter than 3 minutes collapse to 0-duration (must be reviewed by user).
+    /// Overlaps are NOT resolved here — they're detected separately and flagged in the UI.
     /// </summary>
     public static void RoundTimestampsAndDurations(IList<WorklogRecord> records)
     {
-        // Process per day so adjacency is meaningful
-        foreach (var dayGroup in records.GroupBy(r => r.Date.Date))
+        foreach (var r in records)
         {
-            var dayRecords = dayGroup
-                .Where(r => StartTimeToSeconds(r.StartTime) != null)
-                .OrderBy(r => StartTimeToSeconds(r.StartTime))
-                .ToList();
-
-            // Step 1: Round start times, distributing deltas to adjacent durations
-            for (int i = 0; i < dayRecords.Count; i++)
+            int? startSec = StartTimeToSeconds(r.StartTime);
+            if (startSec == null)
             {
-                var r = dayRecords[i];
-                int originalSeconds = StartTimeToSeconds(r.StartTime)!.Value;
-                r.StartTime = RoundStartTimeTo5Min(r.StartTime);
-                int roundedSeconds = StartTimeToSeconds(r.StartTime)!.Value;
-                int delta = roundedSeconds - originalSeconds; // positive = shifted forward
-
-                if (delta != 0)
-                {
-                    // Previous entry's duration grows/shrinks by the delta
-                    if (i > 0)
-                        dayRecords[i - 1].RoundedTimeSpentSeconds = Math.Max(0, dayRecords[i - 1].RoundedTimeSpentSeconds + delta);
-
-                    // Current entry's duration adjusts inversely
-                    r.RoundedTimeSpentSeconds = Math.Max(0, r.RoundedTimeSpentSeconds - delta);
-                }
+                // No parseable start time → fall back to duration-only rounding.
+                r.RoundedTimeSpentSeconds = RoundToNearest5Min(r.RoundedTimeSpentSeconds);
+                continue;
             }
 
-            // Step 2: Round all durations to nearest 5 min (minimum 5 min)
-            foreach (var r in dayRecords)
-                r.RoundedTimeSpentSeconds = RoundToNearest5Min(r.RoundedTimeSpentSeconds);
+            int endSec = startSec.Value + r.RoundedTimeSpentSeconds;
 
-            // Step 3: Resolve overlaps
-            ResolveOverlaps(dayRecords);
+            string roundedStart = RoundStartTimeTo5Min(SecondsToTimeString(startSec.Value));
+            string roundedEnd   = RoundStartTimeTo5Min(SecondsToTimeString(endSec));
+
+            int newStartSec = StartTimeToSeconds(roundedStart)!.Value;
+            int newEndSec   = StartTimeToSeconds(roundedEnd)!.Value;
+
+            r.StartTime = roundedStart;
+            r.RoundedTimeSpentSeconds = Math.Max(0, newEndSec - newStartSec);
+        }
+    }
+
+    /// <summary>
+    /// True when (startTime + durationSeconds) collapses to a zero-length interval
+    /// after rounding both endpoints to the nearest 5 minutes — i.e. the entry
+    /// will disappear when "Round all to 5 min" is applied.
+    /// Returns true for already-zero or sub-3-min durations regardless of start time.
+    /// </summary>
+    public static bool WouldRoundToZero(string startTime, int durationSeconds)
+    {
+        if (durationSeconds <= 0) return true;
+
+        int? startSec = StartTimeToSeconds(startTime);
+        if (startSec == null)
+        {
+            // No start time — only the duration matters; reuse the duration rounder.
+            return RoundToNearest5Min(durationSeconds) == 0;
         }
 
-        // Also round durations for records without parseable start times
-        foreach (var r in records.Where(r => StartTimeToSeconds(r.StartTime) == null))
-            r.RoundedTimeSpentSeconds = RoundToNearest5Min(r.RoundedTimeSpentSeconds);
+        int endSec = startSec.Value + durationSeconds;
+        int roundedStart = StartTimeToSeconds(RoundStartTimeTo5Min(SecondsToTimeString(startSec.Value)))!.Value;
+        int roundedEnd   = StartTimeToSeconds(RoundStartTimeTo5Min(SecondsToTimeString(endSec)))!.Value;
+        return roundedEnd <= roundedStart;
+    }
+
+    /// <summary>Formats total seconds since midnight as "HH:mm:ss" (wraps modulo 24h).</summary>
+    private static string SecondsToTimeString(int totalSeconds)
+    {
+        if (totalSeconds < 0) totalSeconds = 0;
+        int h = (totalSeconds / 3600) % 24;
+        int m = (totalSeconds / 60) % 60;
+        int s = totalSeconds % 60;
+        return $"{h:D2}:{m:D2}:{s:D2}";
     }
 
     /// <summary>
@@ -149,81 +166,13 @@ public static class TimeRoundingHelper
     /// Parses a "HH:mm:ss" or "HH:mm" string into total minutes since midnight.
     /// Returns null if parsing fails or the string is empty.
     /// </summary>
-    private static int? StartTimeToMinutes(string startTime)
+    public static int? StartTimeToMinutes(string startTime)
     {
         if (string.IsNullOrWhiteSpace(startTime)) return null;
         var parts = startTime.Split(':');
         if (parts.Length < 2) return null;
         if (!int.TryParse(parts[0], out int h) || !int.TryParse(parts[1], out int m)) return null;
         return h * 60 + m;
-    }
-
-    /// <summary>
-    /// Converts total minutes since midnight back to "HH:mm:00" string.
-    /// </summary>
-    private static string MinutesToStartTime(int totalMinutes)
-    {
-        if (totalMinutes < 0) totalMinutes = 0;
-        int h = (totalMinutes / 60) % 24;
-        int m = totalMinutes % 60;
-        return $"{h:D2}:{m:D2}:00";
-    }
-
-    /// <summary>
-    /// Resolves overlaps in a single day's records sorted by start time.
-    /// When TS_A + DUR_A > TS_B (overlap):
-    ///   if DUR_A > DUR_B → DUR_A -= 5 min
-    ///   else             → DUR_B -= 5 min; TS_B += 5 min
-    /// Repeats until no overlaps remain.
-    /// </summary>
-    private static void ResolveOverlaps(IList<WorklogRecord> dayRecords)
-    {
-        // Only consider records with parseable start times
-        var sorted = dayRecords
-            .Where(r => StartTimeToMinutes(r.StartTime) != null)
-            .OrderBy(r => StartTimeToMinutes(r.StartTime))
-            .ToList();
-
-        if (sorted.Count < 2) return;
-
-        // Iterate until no overlaps remain (with safety limit)
-        bool changed = true;
-        int maxIterations = sorted.Count * 10;
-        while (changed && maxIterations-- > 0)
-        {
-            changed = false;
-            // Re-sort after potential TS_B shifts
-            sorted = sorted.OrderBy(r => StartTimeToMinutes(r.StartTime)).ToList();
-
-            for (int i = 0; i < sorted.Count - 1; i++)
-            {
-                var a = sorted[i];
-                var b = sorted[i + 1];
-
-                int tsA = StartTimeToMinutes(a.StartTime)!.Value;
-                int durA = a.RoundedTimeSpentSeconds / OneMinuteInSeconds;
-                int tsB = StartTimeToMinutes(b.StartTime)!.Value;
-                int durB = b.RoundedTimeSpentSeconds / OneMinuteInSeconds;
-
-                if (tsA + durA > tsB)
-                {
-                    if (durA > durB)
-                    {
-                        // Shrink A (but not below 5 min)
-                        int newDurA = Math.Max(5, durA - 5);
-                        a.RoundedTimeSpentSeconds = newDurA * OneMinuteInSeconds;
-                    }
-                    else
-                    {
-                        // Shrink B and shift B forward (but B duration not below 5 min)
-                        int newDurB = Math.Max(5, durB - 5);
-                        b.RoundedTimeSpentSeconds = newDurB * OneMinuteInSeconds;
-                        b.StartTime = MinutesToStartTime(tsB + 5);
-                    }
-                    changed = true;
-                }
-            }
-        }
     }
 
     /// <summary>

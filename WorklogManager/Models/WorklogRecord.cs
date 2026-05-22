@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using WorklogManager.Helpers;
 
 namespace WorklogManager.Models;
 
@@ -29,7 +30,14 @@ public class WorklogRecord : INotifyPropertyChanged, IDataErrorInfo
     public string StartTime
     {
         get => _startTime;
-        set { _startTime = value; OnPropertyChanged(); OnPropertyChanged(nameof(StartTimeDisplay)); OnPropertyChanged(nameof(EndTimeDisplay)); }
+        set
+        {
+            _startTime = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(StartTimeDisplay));
+            OnPropertyChanged(nameof(EndTimeDisplay));
+            OnPropertyChanged(nameof(IsZeroDuration));
+        }
     }
 
     /// <summary>Start time formatted for display as "HH:mm". Empty when StartTime is not set.</summary>
@@ -101,7 +109,25 @@ public class WorklogRecord : INotifyPropertyChanged, IDataErrorInfo
             OnPropertyChanged(nameof(RoundedHours));
             OnPropertyChanged(nameof(EndTimeDisplay));
             OnPropertyChanged(nameof(IsValid));
+            OnPropertyChanged(nameof(IsZeroDuration));
         }
+    }
+
+    /// <summary>
+    /// True when the entry is already zero-duration OR would collapse to zero on the next
+    /// 5-minute rounding pass (e.g. 12:13:48–12:16:12 → both endpoints round to 12:15).
+    /// Must be reviewed by the user before upload.
+    /// </summary>
+    public bool IsZeroDuration =>
+        _roundedTimeSpentSeconds == 0 ||
+        TimeRoundingHelper.WouldRoundToZero(_startTime, _roundedTimeSpentSeconds);
+
+    /// <summary>Set by MainViewModel.DetectOverlaps when this entry overlaps another on the same day.</summary>
+    private bool _hasOverlap;
+    public bool HasOverlap
+    {
+        get => _hasOverlap;
+        set { _hasOverlap = value; OnPropertyChanged(); }
     }
 
     /// <summary>
