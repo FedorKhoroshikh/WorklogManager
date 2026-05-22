@@ -72,6 +72,10 @@ public class MainViewModel : BaseViewModel
     public ObservableCollection<WorklogRecord> FilteredRecords { get; }
     public ObservableCollection<DateFilterItem> DateFilters { get; }
 
+    /// <summary>Raised when the grouped DataGrid view should re-evaluate group headers
+    /// (e.g. after durations were changed in bulk).</summary>
+    public event EventHandler? GroupedViewRefreshRequested;
+
     // ── Commands ──────────────────────────────────────────────────────────────
 
     public AsyncRelayCommand LoadCsvCommand { get; }
@@ -568,6 +572,7 @@ public class MainViewModel : BaseViewModel
         TimeRoundingHelper.RoundTimestampsAndDurations(records);
         AppendLog($"Rounded {records.Count} entries (start times + durations) to 5-minute boundaries.");
         UpdateSummary();
+        GroupedViewRefreshRequested?.Invoke(this, EventArgs.Empty);
     }
 
     // ── Filtering ─────────────────────────────────────────────────────────────

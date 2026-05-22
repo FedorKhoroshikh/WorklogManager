@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:h="clr-namespace:WorklogManager.Helpers"
+        xmlns:cm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
         mc:Ignorable="d"
         Title="WorklogManager"
         MinWidth="1000" MinHeight="640"
@@ -14,6 +15,11 @@
 
         <!-- Converters -->
         <h:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+        <h:GroupHoursSumConverter x:Key="GroupHoursSumConverter"/>
+
+        <!-- Grouped view over FilteredRecords. Group descriptions are added/removed
+             in code-behind when the "Group by Issue Key" checkbox is toggled. -->
+        <CollectionViewSource x:Key="RecordsView" Source="{Binding FilteredRecords}"/>
 
         <!-- DataGrid row colour by status -->
         <Style x:Key="RowStyle" TargetType="DataGridRow">
@@ -172,8 +178,9 @@
 
                 <!-- DataGrid -->
                 <DataGrid Grid.Column="2"
+                          x:Name="RecordsGrid"
                           Margin="6,8,8,8"
-                          ItemsSource="{Binding FilteredRecords}"
+                          ItemsSource="{Binding Source={StaticResource RecordsView}}"
                           AutoGenerateColumns="False"
                           CanUserAddRows="False"
                           CanUserDeleteRows="False"
@@ -189,16 +196,16 @@
                     <DataGrid.Columns>
 
                         <!-- Selected -->
-                        <DataGridCheckBoxColumn Header="✓" Width="32"
+                        <DataGridCheckBoxColumn Header="✓" Width="32" MinWidth="32"
                             Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"/>
 
                         <!-- Date (read-only) -->
-                        <DataGridTextColumn Header="Date" Width="95"
+                        <DataGridTextColumn Header="Date" Width="95" MinWidth="95"
                             Binding="{Binding DateDisplay}" IsReadOnly="True"
                             FontFamily="Consolas"/>
 
                         <!-- IssueKey (editable + validated) -->
-                        <DataGridTextColumn Header="Issue Key" Width="105"
+                        <DataGridTextColumn Header="Issue Key" Width="105" MinWidth="105"
                             FontFamily="Consolas"
                             CellStyle="{StaticResource ValidatedCell}">
                             <DataGridTextColumn.Binding>
@@ -210,7 +217,7 @@
                         </DataGridTextColumn>
 
                         <!-- Start time (read-only) -->
-                        <DataGridTextColumn Header="Start" Width="52"
+                        <DataGridTextColumn Header="Start" Width="52" MinWidth="52"
                             Binding="{Binding StartTimeDisplay}" IsReadOnly="True"
                             FontFamily="Consolas">
                             <DataGridTextColumn.ElementStyle>
@@ -221,7 +228,7 @@
                         </DataGridTextColumn>
 
                         <!-- End time (read-only, calculated) -->
-                        <DataGridTextColumn Header="End" Width="52"
+                        <DataGridTextColumn Header="End" Width="52" MinWidth="52"
                             Binding="{Binding EndTimeDisplay}" IsReadOnly="True"
                             FontFamily="Consolas">
                             <DataGridTextColumn.ElementStyle>
@@ -232,7 +239,7 @@
                         </DataGridTextColumn>
 
                         <!-- Hours (editable — snaps to nearest 5 min on commit) -->
-                        <DataGridTextColumn Header="Hours" Width="65"
+                        <DataGridTextColumn Header="Hours" Width="65" MinWidth="65"
                             CellStyle="{StaticResource ValidatedCell}">
                             <DataGridTextColumn.Binding>
                                 <Binding Path="RoundedHours"
@@ -244,7 +251,7 @@
                         </DataGridTextColumn>
 
                         <!-- Seconds (read-only) -->
-                        <DataGridTextColumn Header="Sec" Width="65"
+                        <DataGridTextColumn Header="Sec" Width="65" MinWidth="65"
                             Binding="{Binding RoundedTimeSpentSeconds}"
                             IsReadOnly="True"
                             FontFamily="Consolas">
@@ -256,7 +263,7 @@
                         </DataGridTextColumn>
 
                         <!-- IssueExists icon -->
-                        <DataGridTextColumn Header="Jira" Width="45"
+                        <DataGridTextColumn Header="Jira" Width="45" MinWidth="45"
                             Binding="{Binding IssueExistsDisplay}"
                             IsReadOnly="True" FontSize="14">
                             <DataGridTextColumn.ElementStyle>
@@ -318,10 +325,50 @@
                         </DataGridTemplateColumn>
 
                         <!-- Upload status (read-only) -->
-                        <DataGridTextColumn Header="Status" Width="130"
+                        <DataGridTextColumn Header="Status" Width="130" MinWidth="130"
                             Binding="{Binding UploadStatusDisplay}"
                             IsReadOnly="True" FontSize="11"/>
                     </DataGrid.Columns>
+
+                    <!-- Group header: Issue Key + record count + total hours -->
+                    <DataGrid.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.ContainerStyle>
+                                <Style TargetType="GroupItem">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="GroupItem">
+                                                <Expander IsExpanded="True"
+                                                          Background="#EEF3FB"
+                                                          BorderBrush="#C8D8F0"
+                                                          BorderThickness="0,1,0,1"
+                                                          Margin="0,2,0,0">
+                                                    <Expander.Header>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding Name}"
+                                                                       FontWeight="SemiBold"
+                                                                       FontFamily="Consolas"
+                                                                       Foreground="#2B579A"
+                                                                       VerticalAlignment="Center"/>
+                                                            <TextBlock Text="{Binding Items, Converter={StaticResource GroupHoursSumConverter}, StringFormat=' — {0}'}"
+                                                                       FontWeight="SemiBold"
+                                                                       Foreground="#2B579A"
+                                                                       VerticalAlignment="Center"/>
+                                                            <TextBlock Text="{Binding ItemCount, StringFormat='   ({0} entries)'}"
+                                                                       Foreground="#666666"
+                                                                       FontSize="11"
+                                                                       VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                    </Expander.Header>
+                                                    <ItemsPresenter/>
+                                                </Expander>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </GroupStyle.ContainerStyle>
+                        </GroupStyle>
+                    </DataGrid.GroupStyle>
                 </DataGrid>
             </Grid>
 
@@ -335,6 +382,18 @@
 
                         <!-- Right side: toggles -->
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+
+                            <!-- Group by Issue Key toggle -->
+                            <Border Background="#EEF3FB" BorderBrush="#C8D8F0"
+                                    BorderThickness="1" CornerRadius="3" Padding="12,5"
+                                    Margin="0,0,6,0">
+                                <CheckBox x:Name="GroupByIssueKeyCheckBox"
+                                          VerticalAlignment="Center"
+                                          Checked="GroupByIssueKey_Toggled"
+                                          Unchecked="GroupByIssueKey_Toggled">
+                                    <TextBlock Text="📂 Group by Issue Key"/>
+                                </CheckBox>
+                            </Border>
 
                             <!-- Dry Run toggle -->
                             <Border Background="#FFFBEA" BorderBrush="#DDCC88"
