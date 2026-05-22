@@ -1,12 +1,20 @@
 {
   "mcpServers": {
+    "rider": {
+      "type": "sse",
+      "url": "http://127.0.0.1:64342/sse",
+      "headers": {}
+    },
     "mcp-atlassian": {
       "command": "uvx",
       "args": ["mcp-atlassian"],
       "env": {
         "JIRA_URL": "https://tcm-international.atlassian.net/",
         "JIRA_USERNAME": "${JIRA_USERNAME}",
-        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
+        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}",
+        "CONFLUENCE_URL": "https://tcm-international.atlassian.net/wiki",
+        "CONFLUENCE_USERNAME": "${JIRA_USERNAME}",
+        "CONFLUENCE_API_TOKEN": "${JIRA_API_TOKEN}"
       }
     }
   }

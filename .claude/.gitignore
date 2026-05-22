@@ -1,0 +1,80 @@
+# Local-only Claude workspace artifacts (scratchpad plans, analysis notes, ad-hoc scripts, personal skills).
+# Keeps `git status` clean without removing files. Paths are relative to this .gitignore (.claude/).
+
+# --- .claude/ root ---
+CLAUDE.md
+CLAUDE-WinTool-specific.md
+CLAUDE.jira.md
+CLAUDE.local.md
+CLAUDE.wintool.md
+env.bash
+
+# --- analysis/ ---
+analysis/duplo-locked-usage.md
+analysis/alternatives-and-replace-spec.md
+
+# --- analyzes/ ---
+analyzes/adding-part-to-tool-calls-analysis.md
+analyzes/sange-tc-blocks.txt
+analyzes/sange-tc-page-body.md
+analyzes/sange-tc-page.md
+
+# --- plans/ ---
+plans/CSD-6782-virtual-context-wiring.md
+plans/integration-tests-todo.md
+plans/netto-details-context-wiring.md
+plans/wt-13440-process-search-forms-refactoring-task.md
+plans/wt-13440-process-search-refactoring-investigation-report.md
+plans/wt-13440-process-search-refactoring-plan.md
+plans/wt-13451-initial-detailed-description.md
+plans/wt-13438-integration-tests-plan.md
+plans/wt-13413-collapse-db-overrides.md
+plans/wt-13413-unload-location-snapshot-only.md
+plans/wt-13413-nettoduplos-context-consistency.md
+
+# --- scripts/ ---
+scripts/__pycache__/
+scripts/WTReporting-setup.cmd
+scripts/anonymize_WTData.sql
+scripts/flatten_solution.py
+scripts/query_all_jobs.sql
+scripts/query_job1_d50_state.sql
+scripts/query_job1_jobmaster_full.sql
+scripts/query_job1_tools.sql
+scripts/query_job_status_summary.sql
+scripts/query_jobs_s50.sql
+scripts/query_tc77_state.sql
+scripts/query_tc77b_state.sql
+scripts/logistics_analyze_fix.sql
+scripts/reformat_snapshot.py
+scripts/tc77_setup_full_magazine.sql
+scripts/teamcity-temp-cleanup.txt
+
+# --- scripts/ (continued) ---
+scripts/update_sonar_page.py
+
+# --- skills/ ---
+skills/branch-summary.md
+skills/claude-alpha-release-tag-branch-msg.md
+skills/claude-code-review.md
+skills/claude-post-release-git-cleanup.md
+skills/claude-post-release-notification.md
+skills/claude-post-release-tag-and-merge-to-main.md
+skills/create-jira-beetle.md
+skills/create-jira-beetle/SKILL.md
+skills/dev-activity-analysis.md
+skills/dotnet-desktop-tech-spec-writer.md
+skills/dry-refactor/*
+skills/claude-save-sonar-reports-for-wt-release.md
+skills/dup-tickets-under-another-epic.md
+skills/update-jira-tickets-under-epic.md
+skills/update-local-claude-rules.md
+
+# planning-by-files skill
+skills/plan/**/*
+
+# temporary - plan files for topics within CSD-6782-virtual-context-wiring
+plans/csd-6782-integration-tests-todo.md
+plans/wt-13507/wt-13507-netto-details-context-wiring.md
+plans/wt-13507/wt-13507-nettoduplos-context-consistency.md
+plans/wt-13507/wt-13507-virtualize-netto-details.md
