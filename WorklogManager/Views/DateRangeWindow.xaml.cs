@@ -16,17 +16,35 @@ public partial class DateRangeWindow : Window
     {
         InitializeComponent();
 
-        // Default: today → today
-        var today = DateTime.Today;
-        FromPicker.SelectedDate = today;
-        ToPicker.SelectedDate   = today;
+        // Default: today (or the previous working day before 16:00 — worklog usually
+        // covers the previous day; skip Sat/Sun so Monday morning lands on Friday).
+        var initial = DateTime.Today;
+        if (DateTime.Now.Hour < 16)
+        {
+            initial = initial.AddDays(-1);
+            while (initial.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+                initial = initial.AddDays(-1);
+        }
+        FromPicker.SelectedDate = initial;
+        ToPicker.SelectedDate   = initial;
     }
 
-    private void DatePicker_Changed(object sender, SelectionChangedEventArgs e) =>
+    private void DatePicker_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        // If "To" was changed to a date earlier than "From", drag "From" along.
+        if (ReferenceEquals(sender, ToPicker)
+            && FromPicker.SelectedDate.HasValue
+            && ToPicker.SelectedDate.HasValue
+            && ToPicker.SelectedDate.Value < FromPicker.SelectedDate.Value)
+        {
+            FromPicker.SelectedDate = ToPicker.SelectedDate;
+        }
+
         LoadButton.IsEnabled =
             FromPicker.SelectedDate.HasValue &&
             ToPicker.SelectedDate.HasValue &&
             FromPicker.SelectedDate.Value <= ToPicker.SelectedDate.Value;
+    }
 
     private void LoadButton_Click(object sender, RoutedEventArgs e)
     {
